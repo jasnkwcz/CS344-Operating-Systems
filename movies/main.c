@@ -30,6 +30,9 @@ int main(int argc, char *argv[])
         case 1:
             printf("Please enter a year: ");
             scanf("%d", &year);
+            printf("\n");
+            displayMoviesFromYear(year, list);
+            printf("\n");
             break;
         case 2:
 
@@ -37,7 +40,9 @@ int main(int argc, char *argv[])
         case 3:
             printf("Please select a language: ");
             scanf("%s", langptr);
-            printf("Displaying all movies released in %s: \n", langptr);
+            printf("\n");
+            displayMoviesInLanguage(langptr, list);
+            printf("\n");
             break;
         case 4:
             printf("Goodbye\n");
@@ -46,5 +51,6 @@ int main(int argc, char *argv[])
             printf("Invalid selection\n\n");
         }
     } while (response != 4);
+    free(langptr);
     return EXIT_SUCCESS;
 }
