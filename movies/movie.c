@@ -140,12 +140,18 @@ void displayTopMovies(struct Movie *list)
   bubbleSort(list);
   //iterate through list, printing top movie for each year
   struct Movie *curr = list;
-  struct Movie *max - list;
+  struct Movie *max = curr;
   while (curr != NULL)
   {
-    //check if the
+    if (curr->rating > max->rating && curr->year == max->year) {
+      max = curr;
+    }
+    if (curr->next->year != curr->year) {
+      printf("%d - %.1f - %s\n", max->year, max->rating, max->title);
+      max = curr->next;
+    }
+    curr = curr->next;
   }
-
   return;
 }
 
