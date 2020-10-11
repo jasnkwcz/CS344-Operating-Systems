@@ -149,6 +149,7 @@ void displayTopMovies(struct Movie *list)
     //if yes, set max = curr
     //before next loop, move curr forward
 
+<<<<<<< HEAD
     if (curr->year != max->year)
     {
       printf("%d - %.1f - %s\n", max->year, max->rating, max->title);
@@ -161,6 +162,16 @@ void displayTopMovies(struct Movie *list)
     }
     else if (curr->rating > max->rating)
     {
+=======
+    if (curr->year != max->year) {
+      printf("%d - %.1f - %s\n", max->year, max->rating, max->title);
+      max = curr;
+      if (curr->next == NULL) {
+        printf("%d - %.1f - %s\n", max->year, max->rating, max->title);
+        break;
+      }
+    } else if (curr->rating > max->rating) {
+>>>>>>> 9e4afbcda8ea69710892dc4843fddcf66bd98cce
       max = curr;
     }
     curr = curr->next;
