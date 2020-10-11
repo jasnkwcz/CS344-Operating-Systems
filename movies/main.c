@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
             printf("\n");
             break;
         case 2:
-
+            displayTopMovies(list);
             break;
         case 3:
             printf("Please select a language: ");
