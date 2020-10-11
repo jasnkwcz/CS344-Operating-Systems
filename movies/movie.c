@@ -3,6 +3,9 @@
 #include <string.h>
 #include "movie.h"
 
+//*********************************
+//The following code is adapted from the starter code provided in the course repl.it file
+//*********************************
 struct Movie
 {
   char *title;
@@ -111,7 +114,13 @@ struct Movie *createMovie(char *currLine)
 
   return currMovie;
 }
+//*********************************
+//End of code adapted from repl.it
+//*********************************
 
+//*********************************
+//User inputs a year, function iterates across the LL and displays all movies that have year attribute matching user input
+//*********************************
 void displayMoviesFromYear(int year, struct Movie *list)
 {
   printf("Displaying movies from %d:\n", year);
@@ -133,6 +142,10 @@ void displayMoviesFromYear(int year, struct Movie *list)
   return;
 }
 
+//*********************************
+//Display the top movie from each year. If there are two or more movies for a given year with the same rating, display only one.
+//first sort list by year, then iterate over the list and find the top movie for each year and display it
+//*********************************
 void displayTopMovies(struct Movie *list)
 {
   printf("Displaying highest rated movies for each year:\n");
@@ -183,6 +196,9 @@ void displayMoviesInLanguage(char *langptr, struct Movie *list)
   return;
 }
 
+//*********************************
+//helper function for displayMoviesInLanguage. returns 1 if a movie node contains the given language in langptr, otherwise returns 0 if node does not contain that language
+//*********************************
 int movieContainsLanguage(char *langptr, struct Movie *node)
 {
   //use a token to extract language strings from the node
@@ -200,10 +216,10 @@ int movieContainsLanguage(char *langptr, struct Movie *node)
   }
   return 0;
 }
-//******************
-//*****************
+
+//*********************************
 //The following code was adapted from the bubble sort implementation found on https://www.geeksforgeeks.org/c-program-bubble-sort-linked-list/
-/* Bubble sort the given linked list */
+//*********************************
 void bubbleSort(struct Movie *start)
 {
   int swapped, i;
@@ -253,7 +269,6 @@ void swap(struct Movie *a, struct Movie *b)
 
   free(temp);
 }
-
+//*********************************
 //end of code adapted from bubble sort implementation
-//******************
-//*****************
+//*********************************
