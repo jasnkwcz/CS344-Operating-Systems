@@ -38,6 +38,7 @@ int main(void)
         //logic for selecting file by name
         printf("Please enter the filename (including extension): ");
         scanf("%s", response.filename);
+        printf("Processing file: %s\n", response.filename);
         processByName(response.filename);
         break;
       default:

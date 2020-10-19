@@ -1,8 +1,8 @@
 
-void processFile();
+void processFile(char *filename);
 
 void processLargest();
 
 void processSmallest();
 
-void processByName(char* filename);
+void processByName(char *filename);
