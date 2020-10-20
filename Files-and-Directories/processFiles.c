@@ -13,6 +13,8 @@
 
 #define HIGH 99999
 #define LOW 0
+#define PREFIX "movies_"
+#define EXT ".csv"
 
 /*******************************************************************
  take an empty char array as input, create a pseudorandom directory name and store in input array
@@ -91,7 +93,39 @@ void processLargest()
 {
   //iterate through all inodes in the current directory, checking the metadata of each node to find largest file of type .csv that also has the prefix "movies_"
   //process that node using processFile()
-  buildDir("hello.csv");
+  DIR *dir = opendir(".");
+  struct dirent *file;
+  struct dirent *max;
+  struct stat dirstat;
+  struct stat maxstat;
+  char extension[5];
+  while ((file = readdir(dir)) != NULL)
+  {
+    if (max == NULL)
+    {
+      max = file;
+    }
+    stat(file->d_name, &dirstat);
+    stat(max->d_name, &maxstat);
+
+    strcpy(extension, &file->d_name[strlen(file->d_name) - 4]); //check if .csv file
+    if (strcmp(EXT, extension) == 0)
+    {
+      //then check if filename has prefix "movies_"
+      if (strncmp(PREFIX, file->d_name, 7) == 0)
+      {
+        //check if file size is larger than the current max size
+        if ((int)dirstat.st_size > (int)maxstat.st_size)
+        {
+          max = file;
+        }
+      }
+    }
+
+    printf("%s    %d\n", file->d_name, (int)dirstat.st_size);
+    printf("Current max file is: %s\n", max->d_name);
+  }
+  buildDir(max->d_name);
   return;
 }
 
@@ -101,21 +135,37 @@ In case of tie, pick any of the files with the extension csv starting with movie
 *******************************************************************/
 void processSmallest()
 {
-  //iterate through all inodes in the current directory, checking the metadata of each node to find smallest file of type .csv that also has the prefix "movies_"
-  //process that node using processFile()
-  buildDir("hello.csv");
-  return;
-}
+  DIR *dir = opendir(".");
+  struct dirent *file;
+  struct dirent *min;
+  struct stat dirstat;
+  struct stat minstat;
+  char extension[5];
+  while ((file = readdir(dir)) != NULL)
+  {
+    if (min == NULL)
+    {
+      min = file;
+    }
+    stat(file->d_name, &dirstat);
+    stat(min->d_name, &minstat);
 
-/*******************************************************************
-asks the user to enter the name of a file.
-The program checks if this file exists in the current directory. If the file is not found, the program should write an error message and again give the user the 3 choices about picking a file, i.e., don't go back to the main menu, but stay at the menu for picking a file.
-*******************************************************************/
-void processByName(char *filename)
-{
-  //iterate over each inode to find a file with the given name
-  //if no file is found, write an error message to std output
-  //when file is found, process the file using processFile()
-  buildDir(filename);
+    strcpy(extension, &file->d_name[strlen(file->d_name) - 4]); //check if .csv file
+    if (strcmp(EXT, extension) == 0)
+    {
+      //then check if filename has prefix "movies_"
+      if (strncmp(PREFIX, file->d_name, 7) == 0)
+      {
+        //check if file size is larger than the current max size
+        if ((int)dirstat.st_size < (int)minstat.st_size)
+        {
+          min = file;
+        }
+      }
+    }
+
+    printf("%s    %d\n", file->d_name, (int)dirstat.st_size);
+  }
+  buildDir(min->d_name);
   return;
 }

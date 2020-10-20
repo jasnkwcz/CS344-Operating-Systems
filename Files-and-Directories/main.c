@@ -46,7 +46,7 @@ int main(void)
         printf("Please enter the filename (including extension): ");
         scanf("%s", response.filename);
         printf("Processing file: %s\n", response.filename);
-        processByName(response.filename);
+        buildDir(response.filename);
         break;
       default:
         printf("Invalid selection\n");
