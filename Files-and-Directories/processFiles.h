@@ -1,8 +1,11 @@
+#include "movie.h"
 
-void processFile(char *filename);
+void buildDir(char *filename);
 
 void processLargest();
 
 void processSmallest();
 
 void processByName(char *filename);
+
+void makeDirname(char *dirname);

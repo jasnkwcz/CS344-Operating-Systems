@@ -8,15 +8,32 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include "movie.h"
+#include <unistd.h>
 
 #define HIGH 99999
 #define LOW 0
 
 /*******************************************************************
+ take an empty char array as input, create a pseudorandom directory name and store in input array
+ *******************************************************************/
+void makeDirname(char *dirname)
+{
+  srand(time(0));
+  int random = (rand() % (HIGH - LOW + 1)) + LOW;
+  char randomStr[6];
+  sprintf(randomStr, "%d", random);
+  randomStr[5] = '\0';
+  strcpy(dirname, "sienkijo.movies.");
+  strcat(dirname, randomStr);
+  printf("Created new directory: %s\n", dirname);
+  return;
+}
+
+/*******************************************************************
 Create a new directory and print a message with the name of the directory that has been created
 The directory must be named your_onid.movies.random
-where
-random is a random number between 0 and 99999 (both numbers inclusive)
+where random is a random number between 0 and 99999 (both numbers inclusive)
 your_onid is your ONID
 The permissions of the directory must be set to rwxr-x---
 i.e., the owner has read, write and execute permissions, and group has read and execute permission to the directory.
@@ -29,28 +46,14 @@ E.g., the file for movies released in 2018 must be named 2018.txt
 Within the file for a year, write the titles of all the movies released in that year, one on each line
 E.g., if two movies Avengers: Infinity War and Mary Queen of Scots where released in 2018, then the file 2018.txt will have two lines with each of the two titles on one line each.
 *******************************************************************/
-void processFile(char *filename)
+void buildDir(char *filename)
 {
-  //generate random number [0..99999]
-  int readfile = open(filename, O_RDONLY);
-  if (readfile == -1)
-  {
-    printf("Could not open specified file.\n");
-    return;
-  }
-  srand(time(0));
-  int random = (rand() % (HIGH - LOW + 1)) + LOW;
-  printf("%d\n", random);
-  char randomStr[6];
-  sprintf(randomStr, "%d", random);
-  randomStr[5] = '\0';
-  char dirname[23];
-  strcpy(dirname, "sienkijo.movies.");
-  strcat(dirname, randomStr);
-  printf("Created new directory: %s\n", dirname);
-  //convert random to string
-  //append random to sienkijo.movies to produce full dirname
-  //create new dir with dirname using mkdir
+  char dirname[32];
+  int fd;
+  int wr;
+  struct Movie *list;
+  list = processFile(filename);
+  makeDirname(dirname);
   if (mkdir(dirname, 0750) != 0)
   {
     printf("Error making directory. Error code %d", errno);
@@ -61,10 +64,21 @@ void processFile(char *filename)
   {
     printf("Error opening directory. Error number %d\n", errno);
   }
-  //reading from the input file:
-  //while getline !null, parse the file line by line
-  //for each movie, create/append the file for the movie's corresponding year (only need to write the movie title)
-  //close dir
+
+  struct Movie *curr = list;
+  char file[32];
+  chdir(dirname);
+  while (curr != NULL)
+  {
+    strcpy(file, curr->year);
+    strcat(file, ".txt");
+    fd = open(file, O_RDWR | O_APPEND | O_CREAT, 0640);
+    wr = write(fd, curr->title, strlen(curr->title) + 1);
+    wr = write(fd, "\n", 2);
+    fd = close(fd);
+    curr = curr->next;
+  }
+  chdir("..");
 
   return;
 }
@@ -77,7 +91,7 @@ void processLargest()
 {
   //iterate through all inodes in the current directory, checking the metadata of each node to find largest file of type .csv that also has the prefix "movies_"
   //process that node using processFile()
-  processFile("hello.csv");
+  buildDir("hello.csv");
   return;
 }
 
@@ -89,7 +103,7 @@ void processSmallest()
 {
   //iterate through all inodes in the current directory, checking the metadata of each node to find smallest file of type .csv that also has the prefix "movies_"
   //process that node using processFile()
-  processFile("hello.csv");
+  buildDir("hello.csv");
   return;
 }
 
@@ -102,6 +116,6 @@ void processByName(char *filename)
   //iterate over each inode to find a file with the given name
   //if no file is found, write an error message to std output
   //when file is found, process the file using processFile()
-  processFile(filename);
+  buildDir(filename);
   return;
 }

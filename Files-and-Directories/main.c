@@ -1,6 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include "processFiles.h"
 
 int main(void)
