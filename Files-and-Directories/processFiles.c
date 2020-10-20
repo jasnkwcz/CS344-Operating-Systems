@@ -33,21 +33,8 @@ void makeDirname(char *dirname)
 }
 
 /*******************************************************************
-Create a new directory and print a message with the name of the directory that has been created
-The directory must be named your_onid.movies.random
-where random is a random number between 0 and 99999 (both numbers inclusive)
-your_onid is your ONID
-The permissions of the directory must be set to rwxr-x---
-i.e., the owner has read, write and execute permissions, and group has read and execute permission to the directory.
-Parse data in the chosen file to find out the movies released in each year
-In the new directory, create one file for each year in which at least one movie was released
-The permissions on these files must be set to rw-r-----
-i.e., the owner can read and write to the file, while group can only read the file.
-The file must be named YYYY.txt where YYYY is the 4 digit integer value for the year.
-E.g., the file for movies released in 2018 must be named 2018.txt
-Within the file for a year, write the titles of all the movies released in that year, one on each line
-E.g., if two movies Avengers: Infinity War and Mary Queen of Scots where released in 2018, then the file 2018.txt will have two lines with each of the two titles on one line each.
-*******************************************************************/
+build a new directory and populate it with .txt files based on the movie file provided by <filename>
+ *******************************************************************/
 void buildDir(char *filename)
 {
   char dirname[32];
@@ -121,9 +108,6 @@ void processLargest()
         }
       }
     }
-
-    printf("%s    %d\n", file->d_name, (int)dirstat.st_size);
-    printf("Current max file is: %s\n", max->d_name);
   }
   buildDir(max->d_name);
   return;
@@ -163,8 +147,6 @@ void processSmallest()
         }
       }
     }
-
-    printf("%s    %d\n", file->d_name, (int)dirstat.st_size);
   }
   buildDir(min->d_name);
   return;
