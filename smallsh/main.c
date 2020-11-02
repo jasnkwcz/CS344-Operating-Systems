@@ -1,6 +1,7 @@
 //Joshua Sienkiewicz
 //Oregon State University
 //CS 344 - Operating Systems
+//Project 3 - Smallsh
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -28,7 +29,10 @@ struct Command
 void findAndReplace(char **str, char *search, char *replace);
 int getUserInput(char **line);
 struct Command *parseInput(char **line);
-//char *varExpand(char *str, char *find, char *replace);
+void runCmd(struct Command *cmd);
+char* cd_builtin(struct Command *cmd);
+void exit_builtin();
+void status_builtin();
 
 int main(void)
 {
@@ -37,6 +41,7 @@ int main(void)
     //initialize varaibles
     char *nline; //a command line
     char **nargv; //array of char pointers to hold the argument vector, whose first entry is the command itself
+    setenv("PWD", getenv("HOME"), 1);
 
     //main command prompt loop
     while (true)
@@ -53,10 +58,11 @@ int main(void)
         if (strcmp(cmd->cmd, "#") == 0) {
             continue;
         }
+
         //run the user command
+        runCmd(cmd);
         //clean up and destroy the command struct
         //vvvvONLY FOR DEBUGGING. REMOVE WHEN DONE **********************************************************************
-        break;
         //^^^^ONLY FOR DEBUGGING. REMOVE WHEN DONE **********************************************************************
     }
     //clean up
@@ -107,7 +113,7 @@ struct Command* parseInput(char** line) {
     char *varex;
 
     //first token is the command
-    token = strtok_r(*line, " ", &saveptr);
+    token = strtok_r(*line, " \n", &saveptr);
     newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
     strcpy(newCmd->cmd, token);
 
@@ -143,7 +149,6 @@ struct Command* parseInput(char** line) {
 
         //handle commands running in the background
         else if (strcmp(token, "&") == 0) {
-            printf("found an &\n");
             if ((token = strtok_r(NULL, " ", &saveptr)) == NULL)
             {
                 newCmd->bg = (char*)calloc(2, sizeof(char));
@@ -155,7 +160,6 @@ struct Command* parseInput(char** line) {
         else {
             newCmd->args[nargc] = (char *)calloc(strlen(token) + 1, sizeof(char));
             strcpy(newCmd->args[nargc], token);
-            printf("argument %d for the new command is %s\n", nargc, newCmd->args[nargc]);
             ++nargc;
         }
     }
@@ -189,36 +193,135 @@ void findAndReplace(char **str, char *search, char *replace)
 
     **str = *newstr;
 
-    printf("The new string is: %s\n", newstr);
-
     return;
 }
 
 /*
-runCmd()
+void runCmd(struct Command *cmd)
     runs the command entered by the user
 
 */
+void runCmd(struct Command *cmd)
+{
+
+    if (strcmp(cmd->cmd, "cd") == 0)
+    {
+        //change the PWD to the directory returned by the cd builtin
+        char *newdir = cd_builtin(cmd);
+        setenv("PWD", newdir, 1);
+        char buffer[MAXCHARS];
+        getcwd(buffer, MAXCHARS);
+        printf("The current working directory is: %s\n", buffer);
+    }
+
+    else if (strcmp(cmd->cmd, "status") == 0)
+    {
+        status_builtin();
+    }
+
+    else if (strcmp(cmd->cmd, "exit") == 0)
+    {
+        exit_builtin();
+    }
+
+    else
+    {
+        printf("Executing external command %s\n", cmd->cmd);
+        externalCmd(cmd);
+    }
+}
 
 /*
-Built-in command: cd
+void externalCmd()
+    runs a non-built-in command by forking a child process and using exec() function
+
+*/
+void externalCmd(struct Command *cmd)
+{
+    pid_t cpid = fork();
+    switch(cpid) 
+    {
+        case -1:
+            perror("%s failed to execute\n", cmd->cmd);
+            exit(1);
+            break;
+        case 0:
+
+        default:
+            //handle background commands
+            if (strcmp(cmd->bg, "&") == 0)
+            {
+                printf("Command will run in background.\n")
+            }
+
+            //handle foreground commands
+            else
+            {
+                printf("Command will run in foreground.\n")
+            }
+
+    }
+}
+
+/*
+Built-in command: cd_builtin()
     runs in foreground only
     if no args are specified, changes to the directory pointed to by the HOME environment variable
     takes up to one arg: a relative OR absolute path to a directory to change to
 
 */
+char* cd_builtin(struct Command *cmd)
+{
+    //handle the case where there is a directory path specified, change to specified directory
+    if (cmd->args[0] != NULL) {
+        //if cd is successful (path found), chdir returns 0
+        if (chdir(cmd->args[0]) == 0)
+        {
+            printf("Changed current working directory to: %s\n", cmd->args[0]);
+            return (getenv("PWD"));
+        }
+
+        else
+        {
+            printf("Directory not found.\n");
+            return (getenv("PWD"));
+        }
+    }
+
+    //case where no arguments provided to cd, set current directory to home environment variable value
+    else {
+        chdir(getenv("HOME"));
+        return (getenv("PWD"));
+    }
+}
 
 /*
-Built-in command: exit
+Built-in command: exit_builtin()
     runs in foreground only
     takes no arguments
     terminates all other currently running processes and jobs, then terminates the shell program
 */
+void exit_builtin()
+{
+    kill(0, SIGKILL);
+}
 
 /*
-Built-in command: status
+Built-in command: status_builtin()
     runs in foreground only
     prints out either the exit status or the terminating signal of the last foreground process run by the shell
     If this command is run before any foreground command is run, then it should simply return the exit status 0.
     ignores the other built-in commands (cd and exit)
 */
+void status_builtin()
+{
+    pid_t cpid;
+    int cpstatus;
+    waitpid(-1, &cpstatus, 0);
+    //the code below was adapted  from the reading material in the "process API - monitoring child processes" section
+    if(WIFEXITED(cpstatus)){
+      printf("Child process { %d } exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
+    } else{
+      printf("Child process { %d } exited abnormally due to recieving signal %d\n", cpid, WTERMSIG(cpstatus));
+    }
+}
