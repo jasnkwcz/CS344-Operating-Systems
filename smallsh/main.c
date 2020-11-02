@@ -11,8 +11,10 @@
 #include <stdbool.h>
 #include <string.h>
 
+
 #define MAXCHARS 2048
 #define MAXARGS 512
+#define VAREXP "$$"
 
 struct Command
 {
@@ -20,12 +22,13 @@ struct Command
     char **args;
     char *inFile;
     char *outFile;
-    bool *run_bg;
+    char *bg;
 };
 
-int getUserInput(char** line);
-struct Command *makeCmd();
-char **parseInput(char *line);
+void strreplace(char **string, const char *search, const char *replace);
+int getUserInput(char **line);
+struct Command *parseInput(char **line);
+//char *varExpand(char *str, char *find, char *replace);
 
 int main(void)
 {
@@ -33,18 +36,23 @@ int main(void)
 
     //initialize varaibles
     char *nline; //a command line
-    struct Command *newcmd = makeCmd(); //a command struct
-    char **nargv;
+    char **nargv; //array of char pointers to hold the argument vector, whose first entry is the command itself
 
+    //main command prompt loop
     while (true)
     {
-        //get user input, store it in nline
+        //get user input, store it in nline. if it's blank, ignore it and restart the prompt loop
         if (getUserInput(&nline) == 1) {
             continue;
         };
-        //parse input
-        nargv = parseInput(nline);
+
+        //parse input into a new command
+        struct Command *cmd = parseInput(&nline);
+
         //check if input is a comment or blank, if so, ignore
+        if (strcmp(cmd->cmd, "#") == 0) {
+            continue;
+        }
         //run the user command
         //clean up and destroy the command struct
         //vvvvONLY FOR DEBUGGING. REMOVE WHEN DONE **********************************************************************
@@ -55,14 +63,6 @@ int main(void)
     return 0;
 }
 
-/*
-makeCmd()
-    allocates memory for all command struct members and returns a pointer to the new command struct
-*/
-struct Command *makeCmd() {
-    struct Command *newCmd = (struct Command *)malloc(sizeof(struct Command));
-    return newCmd;
-}
 
 /*
 handleSigint()
@@ -96,17 +96,81 @@ parseInput()
     if the user input is blank or begins with "#", then input is ignored and returns 0
     else parse the input by splitting into tokens, storing in 
 */
-char **parseInput(char* line) {
-    
+struct Command* parseInput(char** line) {
+    struct Command *newCmd = (struct Command *)malloc(sizeof(struct Command));
+    newCmd->args = (char **)calloc(MAXARGS, sizeof(char*));
+
+    //initialize variables for strtok_r and a counter for the argument list
+    char *token;
+    char *saveptr;
+    int nargc = 0;
+    char *varex;
+
+    //first token is the command
+    token = strtok_r(*line, " ", &saveptr);
+    newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
+    strcpy(newCmd->cmd, token);
+
+    //if the variable expression given in VAREXP is found in the command string, replace it with the shell process id
+    varex = strstr(token, VAREXP);
+    if (strcmp(varex, VAREXP) == 0)
+    {
+        pid_t p = getpid();
+        char pstr[16];
+        sprintf(pstr, "%d", p);
+        printf("found a $$! We should replace it with %s\n", pstr);
+    }
+
+    //begin parsing the arguments for the command    
+    while ((token = strtok_r(NULL, " \n", &saveptr))!= NULL)
+    {
+        //handle input file delimiter, immediately get the next token and store it as the command's infile
+        if (strcmp(token, ">") == 0) {
+            token = strtok_r(NULL, " ", &saveptr);
+            newCmd->inFile = (char *)calloc(strlen(token) + 1, sizeof(char));
+            strcpy(newCmd->inFile, token);
+        }
+
+        //handle the output file delimiter, immediately get the next token and store it as the command's outfile
+        else if (strcmp(token, "<") == 0) {
+            token = strtok_r(NULL, " ", &saveptr);
+            newCmd->outFile = (char *)calloc(strlen(token) + 1, sizeof(char));
+            strcpy(newCmd->outFile, token);
+        }
+
+        //handle commands running in the background
+        else if (strcmp(token, "&") == 0) {
+            printf("found an &\n");
+            if ((token = strtok_r(NULL, " ", &saveptr)) == NULL)
+            {
+                newCmd->bg = (char*)calloc(2, sizeof(char));
+                strcpy(newCmd->bg, "&");
+            }
+        }
+
+        //handle everything else (command arguments)
+        else {
+            newCmd->args[nargc] = (char *)calloc(strlen(token) + 1, sizeof(char));
+            strcpy(newCmd->args[nargc], token);
+            printf("argument %d for the new command is %s\n", nargc, newCmd->args[nargc]);
+            ++nargc;
+        }
+    }
+
+    return newCmd;
 }
 
-
 /*
-varExp()
+varExpand()
     handles variable expansion when a "$$" is found in a command
     takes the command string as input, replaces the "$$" with the current process ID
     replace command string with the new string
 */
+
+void varExpand(char **string, const char *search, const char *replace)
+{
+    return;
+}
 
 /*
 runCmd()
