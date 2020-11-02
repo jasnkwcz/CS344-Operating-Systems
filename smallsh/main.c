@@ -25,7 +25,7 @@ struct Command
     char *bg;
 };
 
-void strreplace(char **string, const char *search, const char *replace);
+void findAndReplace(char **str, char *search, char *replace);
 int getUserInput(char **line);
 struct Command *parseInput(char **line);
 //char *varExpand(char *str, char *find, char *replace);
@@ -113,12 +113,15 @@ struct Command* parseInput(char** line) {
 
     //if the variable expression given in VAREXP is found in the command string, replace it with the shell process id
     varex = strstr(token, VAREXP);
-    if (strcmp(varex, VAREXP) == 0)
+    if (varex != NULL)
     {
         pid_t p = getpid();
         char pstr[16];
         sprintf(pstr, "%d", p);
-        printf("found a $$! We should replace it with %s\n", pstr);
+        findAndReplace(&token, VAREXP, pstr);
+        free(newCmd->cmd);
+        newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
+        strcpy(newCmd->cmd, token);
     }
 
     //begin parsing the arguments for the command    
@@ -167,8 +170,27 @@ varExpand()
     replace command string with the new string
 */
 
-void varExpand(char **string, const char *search, const char *replace)
+void findAndReplace(char **str, char *search, char *replace)
 {
+    //allocate a buffer to hold the expanded string
+    char *newstr = (char *)calloc(MAXCHARS, sizeof(char));
+
+    //set a temp to traverse the string to search
+    char *temp = *str;
+
+    while ((temp = strstr(temp,search)))
+    {
+        strncpy(newstr, *str, temp - *str);
+        newstr[temp - *str] = '\0';
+        strcat(newstr, replace);
+        strcat(newstr, temp + strlen(search));
+        strcpy(*str, newstr);
+    }
+
+    **str = *newstr;
+
+    printf("The new string is: %s\n", newstr);
+
     return;
 }
 
