@@ -179,8 +179,6 @@ struct Command* parseInput(char** line) {
         newCmd->args[nargc] = NULL;
     }
 
-    displayCmd(newCmd);
-
     return newCmd;
 }
 
@@ -226,35 +224,27 @@ void runCmd(struct Command *cmd)
     if (strcmp(cmd->cmd, "cd") == 0)
     {
         //change the PWD to the directory returned by the cd builtin
-        printf("running builtin command %s\n", cmd->cmd);
-        fflush(stdout);
         char *newdir = cd_builtin(cmd);
         setenv("PWD", newdir, 1);
         char buffer[MAXCHARS];
         getcwd(buffer, MAXCHARS);
-        printf("The current working directory is: %s\n", buffer);
+        printf("Current directory: %s\n", buffer);
         fflush(stdout);
-        fflush(stdout);
+
     }
 
     else if (strcmp(cmd->cmd, "status") == 0)
     {
-        printf("running builtin command %s\n", cmd->cmd);
-        fflush(stdout);
         status_builtin();
     }
 
     else if (strcmp(cmd->cmd, "exit") == 0)
     {
-        printf("running builtin command %s\n", cmd->cmd);
-        fflush(stdout);
         exit_builtin();
     }
 
     else
     {
-        printf("running external command %s\n", cmd->cmd);
-        fflush(stdout);
         externalCmd(cmd);
     }
 }
