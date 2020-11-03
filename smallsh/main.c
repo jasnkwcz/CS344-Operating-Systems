@@ -33,7 +33,7 @@ struct Command *parseInput(char **line);
 void runCmd(struct Command *cmd);
 char* cd_builtin(struct Command *cmd);
 void exit_builtin();
-void status_builtin();
+int status_builtin();
 void externalCmd(struct Command *cmd);
 void displayCmd(struct Command *cmd);
 void clearCmd(struct Command *cmd);
@@ -45,7 +45,7 @@ int main(void)
     //initialize varaibles
     char *nline; //a command line
     char **nargv; //array of char pointers to hold the argument vector, whose first entry is the command itself
-    setenv("PWD", getenv("HOME"), 1);
+    chdir(getenv("HOME"));
 
     //main command prompt loop
     while (true)
@@ -342,11 +342,15 @@ Built-in command: status_builtin()
     If this command is run before any foreground command is run, then it should simply return the exit status 0.
     ignores the other built-in commands (cd and exit)
 */
-void status_builtin()
+int status_builtin()
 {
     pid_t cpid;
+    //sanity check, if no child process has executed yet
     int cpstatus;
-    waitpid(-1, &cpstatus, 0);
+
+    if (waitpid(-1, &cpstatus, WNOHANG) == 0) {
+        return (EXIT_FAILURE);
+    };
     //the code below was adapted  from the reading material in the "process API - monitoring child processes" section
     if(WIFEXITED(cpstatus)){
       printf("Child process { %d } exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
@@ -355,6 +359,7 @@ void status_builtin()
       printf("Child process { %d } exited abnormally due to recieving signal %d\n", cpid, WTERMSIG(cpstatus));
       fflush(stdout);
     }
+    return (EXIT_SUCCESS);
 }
 
 /*
