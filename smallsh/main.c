@@ -4,6 +4,7 @@
 //Project 3 - Smallsh
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -355,7 +356,7 @@ void status_builtin()
 {
     pid_t cpid;
     int cpstatus;
-    cpid = waitpid(-1, &cpstatus, 0);
+    waitpid(-1, &cpstatus, 0);
     //the code below was adapted  from the reading material in the "process API - monitoring child processes" section
     if(WIFEXITED(cpstatus)){
       printf("Child process { %d } exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
@@ -369,7 +370,7 @@ void status_builtin()
      int count = 0;
      printf("cmd: %s\n", cmd->cmd);
      printf("args: \n");
-     for (int i = 0; cmd->args[i] != NULL; ++i)
+     for (int i = 0; i < MAXARGS; ++i)
      {
          ++count;
          printf("%s\n", cmd->args[i]);
