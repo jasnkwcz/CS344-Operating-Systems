@@ -286,6 +286,8 @@ void externalCmd(struct Command *cmd)
             break;
 
         default:
+            printf("This is coming from the parent process\n");
+            /*
             //handle background commands
             if (strcmp(cmd->bg, "&") == 0)
             {
@@ -299,6 +301,8 @@ void externalCmd(struct Command *cmd)
                 printf("Command will run in foreground.\n");
                 break;
             }
+
+            */
         }
 }
 
