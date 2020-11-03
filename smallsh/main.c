@@ -35,7 +35,6 @@ char* cd_builtin(struct Command *cmd);
 void exit_builtin();
 void status_builtin();
 void externalCmd(struct Command *cmd);
-void displayCmd(struct Command *cmd);
 
 int main(void)
 {
@@ -230,6 +229,8 @@ void runCmd(struct Command *cmd)
         char buffer[MAXCHARS];
         getcwd(buffer, MAXCHARS);
         printf("The current working directory is: %s\n", buffer);
+        fflush(stdout);
+        fflush(stdout);
     }
 
     else if (strcmp(cmd->cmd, "status") == 0)
@@ -276,6 +277,7 @@ void externalCmd(struct Command *cmd)
     {
         case -1:
             printf("%s failed to execute\n", cmd->cmd);
+            fflush(stdout);
             exit(1);
             break;
         case 0:
@@ -287,6 +289,7 @@ void externalCmd(struct Command *cmd)
             if (cmd->bg != 0)
             {
                 printf("Command will run in background.\n");
+                fflush(stdout);
                 break;
             }
 
@@ -316,12 +319,14 @@ char* cd_builtin(struct Command *cmd)
         if (chdir(cmd->args[1]) == 0)
         {
             printf("Changed current working directory to: %s\n", cmd->args[1]);
+            fflush(stdout);
             return (getenv("PWD"));
         }
 
         else
         {
             printf("Directory not found.\n");
+            fflush(stdout);
             return (getenv("PWD"));
         }
     }
@@ -359,31 +364,12 @@ void status_builtin()
     //the code below was adapted  from the reading material in the "process API - monitoring child processes" section
     if(WIFEXITED(cpstatus)){
       printf("Child process { %d } exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
-    } else{
-      printf("Child process { %d } exited abnormally due to recieving signal %d\n", cpid, WTERMSIG(cpstatus));
+      fflush(stdout);
+    }
+    else
+    {
+        printf("Child process { %d } exited abnormally due to recieving signal %d\n", cpid, WTERMSIG(cpstatus));
+        fflush(stdout);
     }
 }
-
-
- void displayCmd(struct Command *cmd)
- {
-     int count = 0;
-     printf("cmd: %s\n", cmd->cmd);
-     printf("args: \n");
-     for (int i = 0; cmd->args[i] != NULL; ++i)
-     {
-         ++count;
-         printf("%s\n", cmd->args[i]);
-     }
-     printf("%s has %d arguments\n", cmd->cmd, count);
-     if (cmd->inFile != NULL)
-     {
-         printf("infile: %s\n", cmd->inFile);
-     }
-     if (cmd->outFile != NULL) 
-     {
-         printf("outfile: %s\n", cmd->outFile);
-     }
-     printf("background? : %d\n", cmd->bg);
- }
  
