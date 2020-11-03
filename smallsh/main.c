@@ -27,7 +27,7 @@ struct Command
     int bg;
 };
 
-void findAndReplace(char **str, char *search, char *replace);
+char* findAndReplace(char *str, char *search, char *replace);
 int getUserInput(char **line);
 struct Command *parseInput(char **line);
 void runCmd(struct Command *cmd);
@@ -65,10 +65,6 @@ int main(void)
         //run the user command
         runCmd(cmd);
         //clean up and destroy the command struct
-        free(cmd->cmd);
-        free(cmd->args);
-        free(cmd->inFile);
-        free(cmd->outFile);
         free(cmd);
     }
     //clean up
@@ -125,13 +121,13 @@ struct Command* parseInput(char** line) {
     if (varex != NULL)
     {
         pid_t p = getpid();
-        char pstr[16];
+        char pstr[8];
         sprintf(pstr, "%d", p);
-        findAndReplace(&token, VAREXP, pstr);
-        newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
-        newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
-        strcpy(newCmd->cmd, token);
-        strcpy(newCmd->args[0], token);
+        char* newstr = findAndReplace(token, VAREXP, pstr);
+        newCmd->cmd = (char *)calloc(strlen(newstr) + 1, sizeof(char));
+        newCmd->args[0] = (char *)calloc(strlen(newstr) + 1, sizeof(char));
+        strcpy(newCmd->cmd, newstr);
+        strcpy(newCmd->args[0], newstr);
     }
     else {
         newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
@@ -139,9 +135,8 @@ struct Command* parseInput(char** line) {
         strcpy(newCmd->cmd, token);
         strcpy(newCmd->args[0], token);
     }
-    
 
-    //begin parsing the arguments for the command    
+    //begin parsing the arguments for the command
     while ((token = strtok_r(NULL, " \n", &saveptr))!= NULL)
     {
         printf("after reading in command, current token is: %s", token);
@@ -187,26 +182,24 @@ varExpand()
     replace command string with the new string
 */
 
-void findAndReplace(char **str, char *search, char *replace)
+char* findAndReplace(char *str, char *search, char *replace)
 {
     //allocate a buffer to hold the expanded string
     char *newstr = (char *)calloc(MAXCHARS, sizeof(char));
 
     //set a temp to traverse the string to search
-    char *temp = *str;
+    char *temp = str;
 
     while ((temp = strstr(temp,search)))
     {
-        strncpy(newstr, *str, temp - *str);
-        newstr[temp - *str] = '\0';
+        strncpy(newstr, str, temp - str);
+        newstr[temp - str] = '\0';
         strcat(newstr, replace);
         strcat(newstr, temp + strlen(search));
-        strcpy(*str, newstr);
+        ++temp;
     }
 
-    **str = *newstr;
-
-    return;
+    return newstr;
 }
 
 /*
