@@ -24,7 +24,7 @@ struct Command
     char **args;
     char *inFile;
     char *outFile;
-    char *bg;
+    int bg;
 };
 
 void findAndReplace(char **str, char *search, char *replace);
@@ -107,7 +107,8 @@ parseInput()
 */
 struct Command* parseInput(char** line) {
     struct Command *newCmd = (struct Command *)malloc(sizeof(struct Command));
-    newCmd->args = (char **)calloc(MAXARGS, sizeof(char*));
+    newCmd->bg = 0;
+    newCmd->args = (char **)calloc(MAXARGS, sizeof(char *));
 
     //initialize variables for strtok_r and a counter for the argument list
     char *token;
@@ -158,8 +159,7 @@ struct Command* parseInput(char** line) {
         else if (strcmp(token, "&") == 0) {
             if ((token = strtok_r(NULL, " ", &saveptr)) == NULL)
             {
-                newCmd->bg = (char*)calloc(2, sizeof(char));
-                strcpy(newCmd->bg, "&");
+                newCmd->bg = 1;
             }
         }
 
@@ -177,13 +177,11 @@ struct Command* parseInput(char** line) {
     {
         nargs[i] = (char *)calloc(strlen(newCmd->args[i]), sizeof(char));
         strcpy(nargs[i], newCmd->args[i]);
-        printf("nargs[%d] now contains: %s\n", i, nargs[i]);
     }
 
     free(newCmd->args);
     newCmd->args = nargs;
 
-    displayCmd(newCmd);
     return newCmd;
 }
 
@@ -246,7 +244,6 @@ void runCmd(struct Command *cmd)
 
     else
     {
-        printf("Executing external command %s\n", cmd->cmd);
         externalCmd(cmd);
     }
 }
@@ -271,11 +268,11 @@ void externalCmd(struct Command *cmd)
     {
         nargv[i] = (char *)calloc(strlen(cmd->args[i]),sizeof(char));
         strcpy(nargv[i], cmd->args[i]);
-        printf("nargv now holds %s\n", nargv[i]);
     }
 
     pid_t cpid = fork();
-    switch(cpid) 
+    int cpstatus;
+    switch (cpid)
     {
         case -1:
             printf("%s failed to execute\n", cmd->cmd);
@@ -285,11 +282,9 @@ void externalCmd(struct Command *cmd)
             execvp(cmd->cmd, nargv);
             break;
 
-        default:
-            printf("This is coming from the parent process\n");
-            /*
+        default:            
             //handle background commands
-            if (strcmp(cmd->bg, "&") == 0)
+            if (cmd->bg != 0)
             {
                 printf("Command will run in background.\n");
                 break;
@@ -298,11 +293,11 @@ void externalCmd(struct Command *cmd)
             //handle foreground commands
             else
             {
-                printf("Command will run in foreground.\n");
+                waitpid(cpid, &cpstatus, 0);
                 break;
             }
 
-            */
+            
         }
 }
 
@@ -389,10 +384,6 @@ void status_builtin()
      {
          printf("outfile: %s\n", cmd->outFile);
      }
-     if (cmd->bg != NULL)
-     {
-         printf("bg: %s\n", cmd->bg);
-     }
-  }
-  
+     printf("background? : %d\n", cmd->bg);
+ }
  
