@@ -264,7 +264,7 @@ void externalCmd(struct Command *cmd)
          ++nargc;
     }
 
-    char* nargv[nargc];
+    char* nargv[nargc + 1];
 
     for (int i = 0; cmd->args[i] != NULL; ++i)
     {
@@ -272,9 +272,6 @@ void externalCmd(struct Command *cmd)
         strcpy(nargv[i], cmd->args[i]);
         printf("nargv now holds %s\n", nargv[i]);
     }
-
-    nargv[nargc + 1] = (char *)calloc(1,sizeof(char));
-    nargv[nargc + 1] = NULL;
 
     pid_t cpid = fork();
     switch(cpid) 
@@ -285,20 +282,23 @@ void externalCmd(struct Command *cmd)
             break;
         case 0:
             execvp(cmd->cmd, nargv);
+            break;
 
         default:
             //handle background commands
             if (strcmp(cmd->bg, "&") == 0)
             {
                 printf("Command will run in background.\n");
+                break;
             }
 
             //handle foreground commands
             else
             {
                 printf("Command will run in foreground.\n");
+                break;
             }
-    }
+        }
 }
 
 /*
