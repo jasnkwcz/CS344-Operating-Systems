@@ -65,7 +65,10 @@ int main(void)
         //run the user command
         runCmd(cmd);
         //clean up and destroy the command struct
-
+        free(cmd->cmd);
+        free(cmd->args);
+        free(cmd->inFile);
+        free(cmd->outFile);
         free(cmd);
     }
     //clean up
@@ -95,8 +98,6 @@ int getUserInput(char** line)
     write(STDOUT_FILENO, prompt, strlen(prompt));
     //read a line from stdout up to length of MAXCHARS
     read(STDIN_FILENO, *line, MAXCHARS);
-    //resize the line argument based on the contents read from stdin, then copy the input into the line variable
-    *line = (char*)realloc(*line, strlen(*line));
     return strlen(*line);
 }
 
@@ -127,7 +128,6 @@ struct Command* parseInput(char** line) {
         char pstr[16];
         sprintf(pstr, "%d", p);
         findAndReplace(&token, VAREXP, pstr);
-        printf("after replacing, the token is now %s and has length %lu\n", token, strlen(token));
         newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
         newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
         strcpy(newCmd->cmd, token);
@@ -139,10 +139,12 @@ struct Command* parseInput(char** line) {
         strcpy(newCmd->cmd, token);
         strcpy(newCmd->args[0], token);
     }
+    
 
     //begin parsing the arguments for the command    
     while ((token = strtok_r(NULL, " \n", &saveptr))!= NULL)
     {
+        printf("after reading in command, current token is: %s", token);
         //handle input file delimiter, immediately get the next token and store it as the command's infile
         if (strcmp(token, ">") == 0) {
             token = strtok_r(NULL, " ", &saveptr);
