@@ -148,21 +148,21 @@ struct Command* parseInput(char** line) {
     {
         //handle input file delimiter, immediately get the next token and store it as the command's infile
         if (strcmp(token, ">") == 0) {
-            token = strtok_r(NULL, " ", &saveptr);
+            token = strtok_r(NULL, " \n", &saveptr);
             newCmd->inFile = (char *)calloc(strlen(token) + 1, sizeof(char));
             strcpy(newCmd->inFile, token);
         }
 
         //handle the output file delimiter, immediately get the next token and store it as the command's outfile
         else if (strcmp(token, "<") == 0) {
-            token = strtok_r(NULL, " ", &saveptr);
+            token = strtok_r(NULL, " \n", &saveptr);
             newCmd->outFile = (char *)calloc(strlen(token) + 1, sizeof(char));
             strcpy(newCmd->outFile, token);
         }
 
         //handle commands running in the background
         else if (strcmp(token, "&") == 0) {
-            if ((token = strtok_r(NULL, " ", &saveptr)) == NULL)
+            if ((token = strtok_r(NULL, " \n", &saveptr)) == NULL)
             {
                 newCmd->bg = 1;
             }
@@ -174,6 +174,7 @@ struct Command* parseInput(char** line) {
             strcpy(newCmd->args[nargc], token);
             ++nargc;
         }
+        newCmd->args[nargc] = NULL;
     }
 
     displayCmd(newCmd);
@@ -262,21 +263,7 @@ void externalCmd()
 */
 void externalCmd(struct Command *cmd)
 {
-    //count the arguments to make a new "argv" vector to execute command
-    int nargc = 0;
-    for (int i = 0; cmd->args[i] != NULL; ++i)
-    {
-         ++nargc;
-    }
-
-    char* nargv[nargc + 1];
-
-    for (int i = 0; cmd->args[i] != NULL; ++i)
-    {
-        nargv[i] = (char *)calloc(strlen(cmd->args[i]),sizeof(char));
-        strcpy(nargv[i], cmd->args[i]);
-    }
-
+    
     pid_t cpid = fork();
     int cpstatus;
     switch (cpid)
@@ -288,8 +275,9 @@ void externalCmd(struct Command *cmd)
             break;
         case 0:
             fflush(stdout);
-            execvp(cmd->cmd, nargv);
-            break;
+            execvp(cmd->cmd, cmd->args);
+            perror("execvp failed\n");
+            exit(EXIT_FAILURE);
 
         default:            
             //handle background commands
