@@ -365,12 +365,13 @@ void status_builtin()
     }
 }
 
+
  void displayCmd(struct Command *cmd)
  {
      int count = 0;
      printf("cmd: %s\n", cmd->cmd);
      printf("args: \n");
-     for (int i = 0; i < MAXARGS; ++i)
+     for (int i = 0; cmd->args[i] != NULL; ++i)
      {
          ++count;
          printf("%s\n", cmd->args[i]);
@@ -389,4 +390,5 @@ void status_builtin()
          printf("bg: %s\n", cmd->bg);
      }
   }
+  
  
