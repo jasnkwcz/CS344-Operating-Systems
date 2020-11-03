@@ -65,8 +65,8 @@ int main(void)
         //run the user command
         runCmd(cmd);
         //clean up and destroy the command struct
-        //vvvvONLY FOR DEBUGGING. REMOVE WHEN DONE **********************************************************************
-        //^^^^ONLY FOR DEBUGGING. REMOVE WHEN DONE **********************************************************************
+
+        free(cmd);
     }
     //clean up
     return 0;
@@ -118,10 +118,6 @@ struct Command* parseInput(char** line) {
 
     //first token is the command
     token = strtok_r(*line, " \n", &saveptr);
-    newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
-    newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
-    strcpy(newCmd->cmd, token);
-    strcpy(newCmd->args[0], token);
 
     //if the variable expression given in VAREXP is found in the command string, replace it with the shell process id
     varex = strstr(token, VAREXP);
@@ -131,7 +127,13 @@ struct Command* parseInput(char** line) {
         char pstr[16];
         sprintf(pstr, "%d", p);
         findAndReplace(&token, VAREXP, pstr);
-        free(newCmd->cmd);
+        printf("after replacing, the token is now %s and has length %lu\n", token, strlen(token));
+        newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
+        newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
+        strcpy(newCmd->cmd, token);
+        strcpy(newCmd->args[0], token);
+    }
+    else {
         newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
         newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
         strcpy(newCmd->cmd, token);
