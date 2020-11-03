@@ -170,14 +170,6 @@ struct Command* parseInput(char** line) {
             ++nargc;
         }
     }
-    
-    //resize the argument list so that we don't get garbage and cause a seg fault during command execution
-    char** nargs = (char **)calloc(nargc, sizeof(char*));
-    for (int i = 0; i < nargc; i++)
-    {
-        nargs[i] = (char *)calloc(strlen(newCmd->args[i]), sizeof(char));
-        strcpy(nargs[i], newCmd->args[i]);
-    }
 
     displayCmd(newCmd);
 
