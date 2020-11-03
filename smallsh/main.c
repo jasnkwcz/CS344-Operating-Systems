@@ -355,7 +355,7 @@ void status_builtin()
 {
     pid_t cpid;
     int cpstatus;
-    waitpid(-1, &cpstatus, 0);
+    cpid = waitpid(-1, &cpstatus, 0);
     //the code below was adapted  from the reading material in the "process API - monitoring child processes" section
     if(WIFEXITED(cpstatus)){
       printf("Child process { %d } exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
