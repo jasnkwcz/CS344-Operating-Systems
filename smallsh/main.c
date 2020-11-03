@@ -33,6 +33,8 @@ void runCmd(struct Command *cmd);
 char* cd_builtin(struct Command *cmd);
 void exit_builtin();
 void status_builtin();
+void externalCmd(struct Command *cmd);
+void displayCmd(struct Command *cmd);
 
 int main(void)
 {
@@ -109,13 +111,15 @@ struct Command* parseInput(char** line) {
     //initialize variables for strtok_r and a counter for the argument list
     char *token;
     char *saveptr;
-    int nargc = 0;
+    int nargc = 1;
     char *varex;
 
     //first token is the command
     token = strtok_r(*line, " \n", &saveptr);
     newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
+    newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
     strcpy(newCmd->cmd, token);
+    strcpy(newCmd->args[0], token);
 
     //if the variable expression given in VAREXP is found in the command string, replace it with the shell process id
     varex = strstr(token, VAREXP);
@@ -127,7 +131,9 @@ struct Command* parseInput(char** line) {
         findAndReplace(&token, VAREXP, pstr);
         free(newCmd->cmd);
         newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
+        newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
         strcpy(newCmd->cmd, token);
+        strcpy(newCmd->args[0], token);
     }
 
     //begin parsing the arguments for the command    
@@ -163,7 +169,20 @@ struct Command* parseInput(char** line) {
             ++nargc;
         }
     }
+    
+    //resize the argument list so that we don't get garbage and cause a seg fault during command execution
+    char** nargs = (char **)calloc(nargc, sizeof(char*));
+    for (int i = 0; i < nargc; i++)
+    {
+        nargs[i] = (char *)calloc(strlen(newCmd->args[i]), sizeof(char));
+        strcpy(nargs[i], newCmd->args[i]);
+        printf("nargs[%d] now contains: %s\n", i, nargs[i]);
+    }
 
+    free(newCmd->args);
+    newCmd->args = nargs;
+
+    displayCmd(newCmd);
     return newCmd;
 }
 
@@ -238,28 +257,47 @@ void externalCmd()
 */
 void externalCmd(struct Command *cmd)
 {
+    //count the arguments to make a new "argv" vector to execute command
+    int nargc = 0;
+    for (int i = 0; cmd->args[i] != NULL; ++i)
+    {
+         ++nargc;
+    }
+
+    char* nargv[nargc];
+
+    for (int i = 0; cmd->args[i] != NULL; ++i)
+    {
+        nargv[i] = (char *)calloc(strlen(cmd->args[i]),sizeof(char));
+        strcpy(nargv[i], cmd->args[i]);
+        printf("nargv now holds %s\n", nargv[i]);
+    }
+
+    nargv[nargc + 1] = (char *)calloc(1,sizeof(char));
+    nargv[nargc + 1] = NULL;
+
     pid_t cpid = fork();
     switch(cpid) 
     {
         case -1:
-            perror("%s failed to execute\n", cmd->cmd);
+            printf("%s failed to execute\n", cmd->cmd);
             exit(1);
             break;
         case 0:
+            execvp(cmd->cmd, nargv);
 
         default:
             //handle background commands
             if (strcmp(cmd->bg, "&") == 0)
             {
-                printf("Command will run in background.\n")
+                printf("Command will run in background.\n");
             }
 
             //handle foreground commands
             else
             {
-                printf("Command will run in foreground.\n")
+                printf("Command will run in foreground.\n");
             }
-
     }
 }
 
@@ -273,11 +311,11 @@ Built-in command: cd_builtin()
 char* cd_builtin(struct Command *cmd)
 {
     //handle the case where there is a directory path specified, change to specified directory
-    if (cmd->args[0] != NULL) {
+    if (cmd->args[1] != NULL) {
         //if cd is successful (path found), chdir returns 0
-        if (chdir(cmd->args[0]) == 0)
+        if (chdir(cmd->args[1]) == 0)
         {
-            printf("Changed current working directory to: %s\n", cmd->args[0]);
+            printf("Changed current working directory to: %s\n", cmd->args[1]);
             return (getenv("PWD"));
         }
 
@@ -325,3 +363,29 @@ void status_builtin()
       printf("Child process { %d } exited abnormally due to recieving signal %d\n", cpid, WTERMSIG(cpstatus));
     }
 }
+
+ void displayCmd(struct Command *cmd)
+ {
+     int count = 0;
+     printf("cmd: %s\n", cmd->cmd);
+     printf("args: \n");
+     for (int i = 0; cmd->args[i] != NULL; ++i)
+     {
+         ++count;
+         printf("%s\n", cmd->args[i]);
+     }
+     printf("%s has %d arguments\n", cmd->cmd, count);
+     if (cmd->inFile != NULL)
+     {
+         printf("infile: %s\n", cmd->inFile);
+     }
+     if (cmd->outFile != NULL) 
+     {
+         printf("outfile: %s\n", cmd->outFile);
+     }
+     if (cmd->bg != NULL)
+     {
+         printf("bg: %s\n", cmd->bg);
+     }
+  }
+ 
