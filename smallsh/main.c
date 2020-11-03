@@ -35,6 +35,7 @@ char* cd_builtin(struct Command *cmd);
 void exit_builtin();
 void status_builtin();
 void externalCmd(struct Command *cmd);
+void displayCmd(struct Command *cmd);
 
 int main(void)
 {
@@ -178,8 +179,7 @@ struct Command* parseInput(char** line) {
         strcpy(nargs[i], newCmd->args[i]);
     }
 
-    free(newCmd->args);
-    newCmd->args = nargs;
+    displayCmd(newCmd);
 
     return newCmd;
 }
@@ -365,11 +365,41 @@ void status_builtin()
     if(WIFEXITED(cpstatus)){
       printf("Child process { %d } exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
       fflush(stdout);
-    }
-    else
-    {
-        printf("Child process { %d } exited abnormally due to recieving signal %d\n", cpid, WTERMSIG(cpstatus));
-        fflush(stdout);
+    } else{
+      printf("Child process { %d } exited abnormally due to recieving signal %d\n", cpid, WTERMSIG(cpstatus));
+      fflush(stdout);
     }
 }
+
+
+ void displayCmd(struct Command *cmd)
+ {
+     printf("Current command: \n");
+     fflush(stdout);
+     int count = 0;
+     printf("cmd: %s\n", cmd->cmd);
+     fflush(stdout);
+     printf("args: \n");
+     fflush(stdout);
+     for (int i = 0; cmd->args[i] != NULL; ++i)
+     {
+         ++count;
+         printf("%s\n", cmd->args[i]);
+         fflush(stdout);
+     }
+     printf("%s has %d arguments\n", cmd->cmd, count);
+     fflush(stdout);
+     if (cmd->inFile != NULL)
+     {
+         printf("infile: %s\n", cmd->inFile);
+         fflush(stdout);
+     }
+     if (cmd->outFile != NULL) 
+     {
+         printf("outfile: %s\n", cmd->outFile);
+         fflush(stdout);
+     }
+     printf("background? : %d\n", cmd->bg);
+     fflush(stdout);
+ }
  
