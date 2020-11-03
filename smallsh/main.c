@@ -281,6 +281,7 @@ void externalCmd(struct Command *cmd)
             exit(1);
             break;
         case 0:
+            fflush(stdout);
             execvp(cmd->cmd, nargv);
             break;
 
