@@ -54,14 +54,14 @@ int main(void)
         if (getUserInput(&nline) == 1) {
             continue;
         };
+        if (*nline == '#') {
+            continue;
+        }
 
         //parse input into a new command
         struct Command *cmd = parseInput(&nline);
 
-        //check if input is a comment or blank, if so, ignore
-        if (strcmp(cmd->cmd, "#") == 0) {
-            continue;
-        }
+
 
         //run the user command
         runCmd(cmd);
@@ -126,7 +126,7 @@ struct Command* parseInput(char** line) {
         char pstr[8];
         sprintf(pstr, "%d", p);
         //allocate a string that is a copy of the token, so that we don't change the contents of the command line
-        char *copystr = (char *)calloc(strlen(token), sizeof(char));
+        char *copystr = (char *)calloc(MAXCHARS, sizeof(char));
         strcpy(copystr, token);
         //replace all occurances of "$$" with the current process id
         findAndReplace(&copystr, VAREXP, pstr);
@@ -135,7 +135,9 @@ struct Command* parseInput(char** line) {
         newCmd->args[0] = (char *)calloc(strlen(copystr) + 1, sizeof(char));
         strcpy(newCmd->cmd, copystr);
         strcpy(newCmd->args[0], copystr);
-        }
+        //let go of the copy string once we are done with it and its contents have been stored into the command
+        free(copystr);
+    }
     else {
         newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
         newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
@@ -276,7 +278,7 @@ void externalCmd(struct Command *cmd)
         case 0:
             fflush(stdout);
             execvp(cmd->cmd, cmd->args);
-            perror("execvp failed\n");
+            perror("execvp failed");
             exit(EXIT_FAILURE);
 
         default:            
