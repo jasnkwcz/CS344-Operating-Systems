@@ -27,7 +27,7 @@ struct Command
     int bg;
 };
 
-char* findAndReplace(char *str, char *search, char *replace);
+void findAndReplace(char **str, char *search, char *replace);
 int getUserInput(char **line);
 struct Command *parseInput(char **line);
 void runCmd(struct Command *cmd);
@@ -36,6 +36,7 @@ void exit_builtin();
 void status_builtin();
 void externalCmd(struct Command *cmd);
 void displayCmd(struct Command *cmd);
+void clearCmd(struct Command *cmd);
 
 int main(void)
 {
@@ -65,7 +66,7 @@ int main(void)
         //run the user command
         runCmd(cmd);
         //clean up and destroy the command struct
-        free(cmd);
+        clearCmd(cmd);
     }
     //clean up
     return 0;
@@ -120,15 +121,21 @@ struct Command* parseInput(char** line) {
     varex = strstr(token, VAREXP);
     if (varex != NULL)
     {
+        //get the current process ID and convert it to a string
         pid_t p = getpid();
         char pstr[8];
         sprintf(pstr, "%d", p);
-        char* newstr = findAndReplace(token, VAREXP, pstr);
-        newCmd->cmd = (char *)calloc(strlen(newstr) + 1, sizeof(char));
-        newCmd->args[0] = (char *)calloc(strlen(newstr) + 1, sizeof(char));
-        strcpy(newCmd->cmd, newstr);
-        strcpy(newCmd->args[0], newstr);
-    }
+        //allocate a string that is a copy of the token, so that we don't change the contents of the command line
+        char *copystr = (char *)calloc(strlen(token), sizeof(char));
+        strcpy(copystr, token);
+        //replace all occurances of "$$" with the current process id
+        findAndReplace(&copystr, VAREXP, pstr);
+        //copy the replaced string into the command and args[0] members of the new command
+        newCmd->cmd = (char *)calloc(strlen(copystr) + 1, sizeof(char));
+        newCmd->args[0] = (char *)calloc(strlen(copystr) + 1, sizeof(char));
+        strcpy(newCmd->cmd, copystr);
+        strcpy(newCmd->args[0], copystr);
+        }
     else {
         newCmd->cmd = (char *)calloc(strlen(token) + 1, sizeof(char));
         newCmd->args[0] = (char *)calloc(strlen(token) + 1, sizeof(char));
@@ -139,7 +146,6 @@ struct Command* parseInput(char** line) {
     //begin parsing the arguments for the command
     while ((token = strtok_r(NULL, " \n", &saveptr))!= NULL)
     {
-        printf("after reading in command, current token is: %s", token);
         //handle input file delimiter, immediately get the next token and store it as the command's infile
         if (strcmp(token, ">") == 0) {
             token = strtok_r(NULL, " ", &saveptr);
@@ -176,30 +182,34 @@ struct Command* parseInput(char** line) {
 }
 
 /*
-varExpand()
+varfindAndReplace()
     handles variable expansion when a "$$" is found in a command
     takes the command string as input, replaces the "$$" with the current process ID
     replace command string with the new string
+    this code was largely inspired and adapted from the post found
+    here: https://stackoverflow.com/questions/32413667/replace-all-occurrences-of-a-substring-in-a-string-in-c/32413923
 */
 
-char* findAndReplace(char *str, char *search, char *replace)
+void findAndReplace(char **str, char *search, char *replace)
 {
     //allocate a buffer to hold the expanded string
     char *newstr = (char *)calloc(MAXCHARS, sizeof(char));
 
     //set a temp to traverse the string to search
-    char *temp = str;
+    char *temp = *str;
 
     while ((temp = strstr(temp,search)))
     {
-        strncpy(newstr, str, temp - str);
-        newstr[temp - str] = '\0';
+        strncpy(newstr, *str, temp - *str);
+        newstr[temp - *str] = '\0';
         strcat(newstr, replace);
         strcat(newstr, temp + strlen(search));
-        ++temp;
+        strcpy(*str, newstr);
     }
 
-    return newstr;
+    **str = *newstr;
+
+    return;
 }
 
 /*
@@ -213,6 +223,8 @@ void runCmd(struct Command *cmd)
     if (strcmp(cmd->cmd, "cd") == 0)
     {
         //change the PWD to the directory returned by the cd builtin
+        printf("running builtin command %s\n", cmd->cmd);
+        fflush(stdout);
         char *newdir = cd_builtin(cmd);
         setenv("PWD", newdir, 1);
         char buffer[MAXCHARS];
@@ -224,16 +236,22 @@ void runCmd(struct Command *cmd)
 
     else if (strcmp(cmd->cmd, "status") == 0)
     {
+        printf("running builtin command %s\n", cmd->cmd);
+        fflush(stdout);
         status_builtin();
     }
 
     else if (strcmp(cmd->cmd, "exit") == 0)
     {
+        printf("running builtin command %s\n", cmd->cmd);
+        fflush(stdout);
         exit_builtin();
     }
 
     else
     {
+        printf("running external command %s\n", cmd->cmd);
+        fflush(stdout);
         externalCmd(cmd);
     }
 }
@@ -241,7 +259,6 @@ void runCmd(struct Command *cmd)
 /*
 void externalCmd()
     runs a non-built-in command by forking a child process and using exec() function
-
 */
 void externalCmd(struct Command *cmd)
 {
@@ -299,7 +316,6 @@ Built-in command: cd_builtin()
     runs in foreground only
     if no args are specified, changes to the directory pointed to by the HOME environment variable
     takes up to one arg: a relative OR absolute path to a directory to change to
-
 */
 char* cd_builtin(struct Command *cmd)
 {
@@ -308,7 +324,7 @@ char* cd_builtin(struct Command *cmd)
         //if cd is successful (path found), chdir returns 0
         if (chdir(cmd->args[1]) == 0)
         {
-            printf("Changed current working directory to: %s\n", cmd->args[1]);
+            printf("%s\n", cmd->args[1]);
             fflush(stdout);
             return (getenv("PWD"));
         }
@@ -361,7 +377,26 @@ void status_builtin()
     }
 }
 
+/*
+void clearCmd(struct Command *cmd)
+    cleans up all memory from a struct
+*/
+void clearCmd(struct Command *cmd)
+{
+    free(cmd->cmd);
+    for (int i = 0; i < MAXARGS; ++i)
+    {
+        free(cmd->args[i]);
+    }
+    free(cmd->inFile);
+    free(cmd->outFile);
+    free(cmd);
+}
 
+/*
+void displaytCmd(struct Command * cmd)
+    this function is used for debugging purposes only
+*/
  void displayCmd(struct Command *cmd)
  {
      printf("Current command: \n");
