@@ -45,6 +45,11 @@ void clearCmd(struct Command *cmd);
 int main(void)
 {
     //assign custom signal handlers for SIGINT and SIGSTP
+    //this code was largely adapted/inspired by the lectures for signal handling
+    struct sigaction ignore_sig = {0};
+    ignore_sig.sa_handler = SIG_IGN;
+    sigaction(SIGINT, &ignore_sig, NULL);
+    sigaction(SIGTSTP, &ignore_sig, NULL);
 
     //initialize varaibles
     char *nline; //a command line
@@ -129,7 +134,7 @@ struct Command* parseInput(char** line) {
     //first token is the command
     token = strtok_r(*line, " \n", &saveptr);
 
-    //if the variable expression given in VAREXP is found in the command string, replace it with the shell process id
+    //initialize a variable to detect variables held in VAREXP
     varex = strstr(token, VAREXP);
     if (varex != NULL)
     {
