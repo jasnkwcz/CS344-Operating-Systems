@@ -107,6 +107,8 @@ struct Command* parseInput(char** line) {
     struct Command *newCmd = (struct Command *)malloc(sizeof(struct Command));
     newCmd->bg = 0;
     newCmd->args = (char **)calloc(MAXARGS, sizeof(char *));
+    newCmd->inFile = NULL;
+    newCmd->outFile = NULL;
 
     //initialize variables for strtok_r and a counter for the argument list
     char *token;
