@@ -149,14 +149,14 @@ struct Command* parseInput(char** line) {
     while ((token = strtok_r(NULL, " \n", &saveptr))!= NULL)
     {
         //handle input file delimiter, immediately get the next token and store it as the command's infile
-        if (strcmp(token, ">") == 0) {
+        if (strcmp(token, "<") == 0) {
             token = strtok_r(NULL, " \n", &saveptr);
             newCmd->inFile = (char *)calloc(strlen(token) + 1, sizeof(char));
             strcpy(newCmd->inFile, token);
         }
 
         //handle the output file delimiter, immediately get the next token and store it as the command's outfile
-        else if (strcmp(token, "<") == 0) {
+        else if (strcmp(token, ">") == 0) {
             token = strtok_r(NULL, " \n", &saveptr);
             newCmd->outFile = (char *)calloc(strlen(token) + 1, sizeof(char));
             strcpy(newCmd->outFile, token);
@@ -267,6 +267,37 @@ void externalCmd(struct Command *cmd)
             break;
         case 0:
             fflush(stdout);
+            //the following I/O redirection code was adapted from the lecture material for "Processes and I/O"
+            if (cmd->inFile != NULL) 
+            {
+                printf("infile is: %s\n", cmd->inFile);
+                int inf = open(cmd->inFile, O_RDONLY);
+                if (inf == -1) {
+                    perror("Could not open file");
+                    exit(1);
+                }
+                int openinf = dup2(inf, 0);
+                if (openinf == -1) {
+                    perror("error opening file in child process");
+                    exit(1);
+                }
+            }
+
+            if (cmd->outFile != NULL)
+                
+            {
+                printf("outfile is: %s\n", cmd->outFile);
+                int outf = open(cmd->outFile, O_WRONLY | O_TRUNC | O_CREAT);
+                if (outf == -1) {
+                    perror("Could not open file");
+                    exit(1);
+                }
+                int openoutf = dup2(outf, 0);
+                if (openoutf == -1) {
+                    perror("error opening file in child process");
+                    exit(1);
+                }
+            }
             execvp(cmd->cmd, cmd->args);
             perror("execvp failed");
             exit(EXIT_FAILURE);
@@ -286,8 +317,6 @@ void externalCmd(struct Command *cmd)
                 waitpid(cpid, &cpstatus, 0);
                 break;
             }
-
-            
         }
 }
 
@@ -369,12 +398,21 @@ void clearCmd(struct Command *cmd)
 void clearCmd(struct Command *cmd)
 {
     free(cmd->cmd);
-    for (int i = 0; i < MAXARGS; ++i)
+    if (cmd->args != NULL) 
     {
-        free(cmd->args[i]);
+        for (int i = 0; i < MAXARGS; ++i)
+        {
+            free(cmd->args[i]);
+        }
+        free(cmd->args);
     }
-    free(cmd->inFile);
-    free(cmd->outFile);
+
+    if (cmd->inFile != NULL) {
+        free(cmd->inFile);
+    }
+    if (cmd->outFile != NULL) {
+        free(cmd->outFile);
+    }
     free(cmd);
 }
 
