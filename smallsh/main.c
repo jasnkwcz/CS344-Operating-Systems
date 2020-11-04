@@ -16,7 +16,11 @@
 
 #define MAXCHARS 2048
 #define MAXARGS 512
+#define MAXPROCS 128
 #define VAREXP "$$"
+
+pid_t procs[MAXPROCS];
+int cpid_index;
 
 struct Command
 {
@@ -46,6 +50,8 @@ int main(void)
     char *nline; //a command line
     char **nargv; //array of char pointers to hold the argument vector, whose first entry is the command itself
     chdir(getenv("HOME"));
+    cpid_index = 0;
+    int cpstatus;
 
     //main command prompt loop
     while (true)
@@ -67,6 +73,10 @@ int main(void)
         runCmd(cmd);
         //clean up and destroy the command struct
         clearCmd(cmd);
+        for (int i = 0; i < cpid_index; i++)
+        {
+            waitpid(procs[i], &cpstatus, WNOHANG);
+        }
     }
     //clean up
     return 0;
@@ -185,7 +195,7 @@ struct Command* parseInput(char** line) {
 }
 
 /*
-varfindAndReplace()
+void findAndReplace()
     handles variable expansion when a "$$" is found in a command
     takes the command string as input, replaces the "$$" with the current process ID
     replace command string with the new string
@@ -306,9 +316,11 @@ void externalCmd(struct Command *cmd)
 
         default:            
             //handle background commands
+            
+            procs[cpid_index] = cpid;
+            ++cpid_index;
             if (cmd->bg != 0)
             {
-                printf("Command will run in background.\n");
                 fflush(stdout);
                 break;
             }
