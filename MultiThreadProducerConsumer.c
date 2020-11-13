@@ -46,7 +46,7 @@ pthread_cond_t buff2cond = PTHREAD_COND_INITIALIZER;
 
 //buffer for variable replacement thread to pass to output
 char buff3[MAXLINES * MAXCHARS];
-
+int getbuff3 = 0;
 //index where producer will place into buff2
 int countbuff3 = 0;
 //buff1 mutex
@@ -241,9 +241,11 @@ void putBuff3(char* buff)
 
   //increment the indexes for the number of items waiting and total items put into buff1
   countbuff3 += strlen(buff);
+  printf("buff3 contains %d characters\n", countbuff3);
   //signal that buff3 is no longer empty, only if 80 or more characters are waiting to be output
   if (countbuff3 >= 80) 
   {
+    printf("time to print!\n");
     pthread_cond_signal(&buff3cond);
   }
   //unlock the mutex
@@ -251,30 +253,29 @@ void putBuff3(char* buff)
   return;
 }
 
-/*
+
 //get a line from the third buffer
 
 char* getBuff3(void)
 {
-  char* get = (char*)calloc(MAXCHARS, sizeof(char));
+  char* get = (char*)calloc(80, sizeof(char));
   //lock the mutex
   pthread_mutex_lock(&buff3mutex);
-  while(countbuff3 == 0)
+  while(countbuff3 < 80)
   {
-    pthread_cond_wait(&buff2cond ,&buff2mutex);
+    pthread_cond_wait(&buff3cond ,&buff3mutex);
   }
   //get the item in buff1 at the replace buffer index
-  strcpy(get, buff2[getbuff2]);
+  strcpy(get, &buff3[getbuff3]);
   //increment the buffer pick index
-  ++getbuff2;
+  getbuff3 += 80;
   //decrement the number of remaining items to pick out of buff1
-  --countbuff2;
+  countbuff3 -= 80;
   //unlock the mutex
-  pthread_mutex_unlock(&buff2mutex);
+  pthread_mutex_unlock(&buff3mutex);
   return get;
- return NULL;
 }
-*/
+
 
 
 
@@ -313,11 +314,15 @@ write to standard output
 */
 void* writeOut(void* arg)
 {
-  //while there are still characters waiting to be printed:
-    //check if there are 80 chars available to print
-    //if no, wait
-    //if yes, print exactly 80 characters followed by a newline
-
+  int eof = 0;
+  while (eof != 1)
+  {
+    char* line = getBuff3();
+    write(STDOUT_FILENO, line, 80);
+  }
+  
+  
+  
  return NULL;
 }
 
