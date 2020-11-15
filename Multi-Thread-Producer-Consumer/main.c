@@ -67,7 +67,7 @@ void putBuff1(char* buff)
   pthread_mutex_lock(&buff1mutex);
   
   //place the item in the buffer at the buff1 index
-  buff1[putbuff1] = (char*)calloc(strlen(buff), sizeof(char));
+  buff1[putbuff1] = (char*)calloc(strlen(buff) + 1, sizeof(char));
   strcpy(buff1[putbuff1],buff);
 
   //increment the indexes for the number of items waiting and total items put into buff1
@@ -145,7 +145,7 @@ void putBuff2(char* buff)
   pthread_mutex_lock(&buff2mutex);
   
   //place the item in the buffer at the buff1 index
-  buff2[putbuff2] = (char*)calloc(strlen(buff), sizeof(char));
+  buff2[putbuff2] = (char*)calloc(strlen(buff) + 1, sizeof(char));
   strcpy(buff2[putbuff2],buff);
 
   //increment the indexes for the number of items waiting and total items put into buff1
@@ -339,8 +339,11 @@ void* writeOut(void* arg)
     char* line = getBuff3();
     if (line != NULL){
       write(STDOUT_FILENO, line, 80);
-    write(STDOUT_FILENO, "\n", 1);
-    } else break;
+      write(STDOUT_FILENO, "\n", 1);
+    } else if (line == NULL)
+    {
+      eofflag = 1;
+    };
   }
  return NULL;
 }
