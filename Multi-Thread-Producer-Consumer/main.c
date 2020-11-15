@@ -130,7 +130,6 @@ void* getInput(void* arg)
     }
     putBuff1(inputbuff);
     memset(inputbuff, 0, MAXCHARS);
-    
   }
   free(inputbuff);
   return NULL;
@@ -204,7 +203,6 @@ void* replaceNewline(void* arg)
     {
       endflag = 1;
       //remove trailing space from stop line
-
       temp[ls - temp] = '\0';
     }
     //put the temp in buff2
@@ -279,7 +277,7 @@ void* replaceVars(void* arg)
   while (endflag != 1)
   {
     temp = getBuff2();
-    if(strcmp(temp, "STOP \0") == 0){
+    if(strcmp(temp, "STOP") == 0){
       endflag = 1;
     }
     findAndReplace(&temp, find, replace);
@@ -306,8 +304,7 @@ char* getBuff3(void)
   while (countbuff3 < 80) {
     if (buff3end == 1)
     {
-      printf("found the end of the input!\n");
-      get = NULL;
+      strcpy(get, "");
       return get;
     } else 
     {
@@ -344,8 +341,9 @@ void* writeOut(void* arg)
   while (endfile != 1)
   {
     line = getBuff3();
-    if (line == NULL)
+    if (strcmp(line, "\0") == 0)
     {
+      endfile = 1;
       return NULL;
     } else
     {
