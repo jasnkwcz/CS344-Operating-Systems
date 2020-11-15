@@ -200,12 +200,15 @@ void* replaceNewline(void* arg)
     //in the temp, replace newline character with space
     char* ls = strchr(temp, '\n');
     temp[ls - temp] = ' ';
-    //put the temp in buff2
-    putBuff2(temp);
     if (strcmp(temp, "STOP ") == 0)
     {
       endflag = 1;
+      //remove trailing space from stop line
+
+      temp[ls - temp] = '\0';
     }
+    //put the temp in buff2
+    putBuff2(temp);
   }
   return NULL;
 }
@@ -240,28 +243,18 @@ void putBuff3(char* buff)
   //lock the mutex
   pthread_mutex_lock(&buff3mutex);
 
-  //check if the buff string contains the stop. if yes, set the buff3end flag
-  if (strcmp(buff, "STOP \0") == 0){
-    buff3end = 1;
-    pthread_cond_signal(&buff3full);
-    pthread_mutex_unlock(&buff3mutex);
-    return;
-  }
-
   //concatenate the string with buff3
   strcat(buff3, buff);
 
   //increment the indexes for the number of items waiting and total items put into buff1
-  countbuff3 = strlen(buff3);
+  countbuff3 += strlen(buff);
 
+  pthread_cond_signal(&buff3full);
 
-  //signal that buff3 is no longer empty, only if 80 or more characters are waiting to be output
-  if (countbuff3 >= 80) 
-  {
-    pthread_cond_signal(&buff3full);
+  if(strcmp(buff, "STOP") == 0){
+    buff3end = 1;
   }
-  //check if the buff string contains the STOP. 
-  
+
   //unlock the mutex
   pthread_mutex_unlock(&buff3mutex);
   return;
@@ -301,27 +294,37 @@ void* replaceVars(void* arg)
 
 char* getBuff3(void)
 {
-  char* get = (char*)calloc(80, sizeof(char));
+  char* get = (char*)calloc(OUTLINESIZE + 1, sizeof(char));
   //lock the mutex
   pthread_mutex_lock(&buff3mutex);
-  //check if the stop line has been reached yet. if so, decide whether there are enough characters to send
-  while(countbuff3 < 80)
-  {
-    //check if the end of file flag has been set. if so, no need to wait
-    if(buff3end == 1)
+  
+  //check if there are 80 or more characters in the buffer
+    //if no, check if the end of file flag has been set
+      //if yes, then free "get" and return null
+      //if no, then wait for more buffer contents
+    //if yes, get them and return them normally
+  while (countbuff3 < 80) {
+    if (buff3end == 1)
     {
-      return NULL;
-    };
-    pthread_cond_wait(&buff3full ,&buff3mutex);
+      printf("found the end of the input!\n");
+      get = NULL;
+      return get;
+    } else 
+    {
+      pthread_cond_wait(&buff3full, &buff3mutex);
+    }
   }
+
   //get the item in buff3
-  strcpy(get, &buff3[getbuff3]);
+  strncpy(get, &buff3[getbuff3], OUTLINESIZE);
   //increment the buffer pick index by 80
   getbuff3 += strlen(get);
   //decrement the number of remaining items to pick out of buff1
   countbuff3 -= strlen(get);
   //unlock the mutex
+
   pthread_mutex_unlock(&buff3mutex);
+  //return the string grabbed from buff3
   return get;
 }
 
@@ -332,20 +335,25 @@ write to standard output
 */
 void* writeOut(void* arg)
 {
-  int eofflag = 0;
-  
-  while (eofflag != 1)
+  //holds the line to be printed
+  char* line;
+  //flag to control the loop for writing output
+  int endfile = 0;
+
+  //keep printing the output until the end of file is detected
+  while (endfile != 1)
   {
-    char* line = getBuff3();
-    if (line != NULL){
+    line = getBuff3();
+    if (line == NULL)
+    {
+      return NULL;
+    } else
+    {
       write(STDOUT_FILENO, line, 80);
       write(STDOUT_FILENO, "\n", 1);
-    } else if (line == NULL)
-    {
-      eofflag = 1;
-    };
+    }
   }
- return NULL;
+  return NULL;
 }
 
 
@@ -367,4 +375,3 @@ int main(void) {
 
   return 0;
 }
-
