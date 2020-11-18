@@ -203,6 +203,7 @@ void* replaceNewline(void* arg)
     //put the temp in buff2
     putBuff2(temp);
   }
+  free(temp);
   return NULL;
 }
 
@@ -223,7 +224,7 @@ void findAndReplace(char **str, char *search, char *replace)
         strcat(newstr, temp + strlen(search));
         strcpy(*str, newstr);
     }
-
+    free(newstr);
     return;
 }
 
@@ -349,6 +350,7 @@ void* writeOut(void* arg)
       write(STDOUT_FILENO, "\n", 1);
     }
   }
+  free(line);
   return NULL;
 }
 
