@@ -348,6 +348,7 @@ void* writeOut(void* arg)
     } else
     {
       fputs(line, stdout);
+      fputs("\n", stdout);
     }
   }
   free(line);
