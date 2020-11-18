@@ -198,12 +198,12 @@ void* replaceNewline(void* arg)
     char* temp = getBuff1();
     //in the temp, replace newline character with space
     char* ls = strchr(temp, '\n');
-    temp[strlen(temp) - 1] = ' ';
+    temp[ls - temp] = ' ';
     if (strcmp(temp, "STOP ") == 0)
     {
       endflag = 1;
       //remove trailing space from stop line
-      temp[strlen(temp) - 1] = '\0';
+      temp[ls - temp] = '\0';
     }
     //put the temp in buff2
     putBuff2(temp);
