@@ -8,8 +8,6 @@
 #define MAXCHARS 1000
 #define OUTLINESIZE 80
 
-//prompt the user to enter more
-char* prompt = ": ";
 //a line containing only this string will signify that the end of input is reached
 char* stop = "STOP\n";
 
@@ -119,7 +117,6 @@ void* getInput(void* arg)
     //otherwise, put the input line in buff1
   while (flag != 1) {
     int endinput = 0;
-    write(STDOUT_FILENO, prompt, strlen(prompt));
     read(STDIN_FILENO, inputbuff, MAXCHARS-1);
     inputbuff[MAXCHARS-1] = '\0';
     if(strcmp(inputbuff, stop) == 0)
