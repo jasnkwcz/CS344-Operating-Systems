@@ -118,7 +118,6 @@ void* getInput(void* arg)
   while (flag != 1) {
     int endinput = 0;
     fgets(inputbuff, MAXCHARS, stdin);
-    //read(STDIN_FILENO, inputbuff, MAXCHARS);
     inputbuff[MAXCHARS-1] = '\0';
     if(strcmp(inputbuff, stop) == 0)
     {
@@ -348,8 +347,7 @@ void* writeOut(void* arg)
       return NULL;
     } else
     {
-      write(STDOUT_FILENO, line, 80);
-      write(STDOUT_FILENO, "\n", 1);
+      fputs(line, stdout);
     }
   }
   free(line);
