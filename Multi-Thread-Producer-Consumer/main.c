@@ -117,7 +117,7 @@ void* getInput(void* arg)
     //otherwise, put the input line in buff1
   while (flag != 1) {
     int endinput = 0;
-    read(STDIN_FILENO, inputbuff, MAXCHARS-1);
+    read(STDIN_FILENO, inputbuff, MAXCHARS);
     inputbuff[MAXCHARS-1] = '\0';
     if(strcmp(inputbuff, stop) == 0)
     {
