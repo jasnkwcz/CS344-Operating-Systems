@@ -202,8 +202,8 @@ void* replaceNewline(void* arg)
     }
     //put the temp in buff2
     putBuff2(temp);
+    free(temp);
   }
-  free(temp);
   return NULL;
 }
 
@@ -343,6 +343,7 @@ void* writeOut(void* arg)
     if (strcmp(line, "\0") == 0)
     {
       endfile = 1;
+      free(line);
       return NULL;
     } else
     {
