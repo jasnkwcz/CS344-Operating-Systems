@@ -117,7 +117,8 @@ void* getInput(void* arg)
     //otherwise, put the input line in buff1
   while (flag != 1) {
     int endinput = 0;
-    read(STDIN_FILENO, inputbuff, MAXCHARS);
+    fgets(inputbuff, MAXCHARS, stdin);
+    //read(STDIN_FILENO, inputbuff, MAXCHARS);
     inputbuff[MAXCHARS-1] = '\0';
     if(strcmp(inputbuff, stop) == 0)
     {
@@ -193,7 +194,7 @@ void* replaceNewline(void* arg)
     getBuff1(temp);
     //in the temp, replace newline character with space
     char* ls = strchr(temp, '\n');
-    strcpy(&temp[ls - temp]," ");
+    strcpy(ls," ");
     if (strcmp(temp, "STOP ") == 0)
     {
       endflag = 1;
