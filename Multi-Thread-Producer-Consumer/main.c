@@ -187,7 +187,7 @@ void* replaceNewline(void* arg)
   //while the end of input flag is not set:
   while (endflag != 1)
   { 
-    char* temp = (char*)calloc(MAXCHARS, sizeof(char));
+    char* temp = (char*)calloc(MAXCHARS + 1, sizeof(char));
 
     //get an item from buff1, store it in a temp
     getBuff1(temp);
