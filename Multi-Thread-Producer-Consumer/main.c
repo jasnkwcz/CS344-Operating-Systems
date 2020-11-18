@@ -15,7 +15,7 @@ char* stop = "STOP\n";
 
 
 //buffer for input thread to pass to line separator
-char* buff1[MAXLINES];
+char buff1[MAXLINES][MAXCHARS];
 
 //index where consumer will get from buff1
 int getbuff1 = 0;
@@ -30,7 +30,7 @@ pthread_cond_t buff1cond = PTHREAD_COND_INITIALIZER;
 
 
 //buffer for line separator thread to pass to variable replacement
-char* buff2[MAXLINES];
+char buff2[MAXLINES][MAXCHARS];
 
 //index where consumer will get from buff2
 int getbuff2 = 0;
@@ -67,7 +67,6 @@ void putBuff1(char* buff)
   pthread_mutex_lock(&buff1mutex);
   
   //place the item in the buffer at the buff1 index
-  buff1[putbuff1] = (char*)calloc(strlen(buff) + 1, sizeof(char));
   strcpy(buff1[putbuff1],buff);
 
   //increment the indexes for the number of items waiting and total items put into buff1
@@ -84,9 +83,8 @@ void putBuff1(char* buff)
 /*
 //get a line from the first buffer
 */
-char* getBuff1(void)
+void getBuff1(char* get)
 {
-  char* get = (char*)calloc(MAXCHARS, sizeof(char));
   //lock the mutex
   pthread_mutex_lock(&buff1mutex);
   while(countbuff1 == 0)
@@ -101,7 +99,7 @@ char* getBuff1(void)
   --countbuff1;
   //unlock the mutex
   pthread_mutex_unlock(&buff1mutex);
-  return get;
+  return;
 }
 
 
@@ -144,7 +142,6 @@ void putBuff2(char* buff)
   pthread_mutex_lock(&buff2mutex);
   
   //place the item in the buffer at the buff1 index
-  buff2[putbuff2] = (char*)calloc(strlen(buff) + 1, sizeof(char));
   strcpy(buff2[putbuff2],buff);
 
   //increment the indexes for the number of items waiting and total items put into buff1
@@ -161,9 +158,8 @@ void putBuff2(char* buff)
 /*
 //get a line from the second buffer
 */
-char* getBuff2(void)
+void getBuff2(char* get)
 {
-  char* get = (char*)calloc(MAXCHARS, sizeof(char));
   //lock the mutex
   pthread_mutex_lock(&buff2mutex);
   while(countbuff2 == 0)
@@ -179,7 +175,7 @@ char* getBuff2(void)
   --countbuff2;
   //unlock the mutex
   pthread_mutex_unlock(&buff2mutex);
-  return get;
+  return;
 }
 
 
@@ -194,8 +190,10 @@ void* replaceNewline(void* arg)
   //while the end of input flag is not set:
   while (endflag != 1)
   { 
+    char* temp = (char*)calloc(MAXCHARS, sizeof(char));
+
     //get an item from buff1, store it in a temp
-    char* temp = getBuff1();
+    getBuff1(temp);
     //in the temp, replace newline character with space
     char* ls = strchr(temp, '\n');
     temp[ls - temp] = ' ';
@@ -265,18 +263,20 @@ main function to run from the replace variables thread
 */
 void* replaceVars(void* arg)
 {
-  char * temp;
   //initialize a flag to check if the end of the input has been reached
   int endflag = 0;
   char* find = "++";
   char* replace = "^";
+  
+  char* temp = (char*)calloc(MAXCHARS, sizeof(char));
+
   //until the end flag is set:
     //get an item from buff2, store it in temp
     //run search and replace algo on the temp
     //put the new string in buff3
   while (endflag != 1)
   {
-    temp = getBuff2();
+    getBuff2(temp);
     if(strcmp(temp, "STOP") == 0){
       endflag = 1;
     }
@@ -284,15 +284,15 @@ void* replaceVars(void* arg)
     putBuff3(temp);
     memset(temp, 0, MAXCHARS);
   }
+  free(temp);
  return NULL;
 }
 
 
 //get a line from the third buffer
 
-char* getBuff3(void)
+void getBuff3(char* get)
 {
-  char* get = (char*)calloc(OUTLINESIZE + 1, sizeof(char));
   //lock the mutex
   pthread_mutex_lock(&buff3mutex);
   
@@ -305,7 +305,7 @@ char* getBuff3(void)
     if (buff3end == 1)
     {
       strcpy(get, "");
-      return get;
+      return;
     } else 
     {
       pthread_cond_wait(&buff3full, &buff3mutex);
@@ -322,7 +322,7 @@ char* getBuff3(void)
 
   pthread_mutex_unlock(&buff3mutex);
   //return the string grabbed from buff3
-  return get;
+  return;
 }
 
 
@@ -333,14 +333,15 @@ write to standard output
 void* writeOut(void* arg)
 {
   //holds the line to be printed
-  char* line;
+  char* line = (char*)calloc(OUTLINESIZE, sizeof(char));
+;
   //flag to control the loop for writing output
   int endfile = 0;
 
   //keep printing the output until the end of file is detected
   while (endfile != 1)
   {
-    line = getBuff3();
+    getBuff3(line);
     if (strcmp(line, "\0") == 0)
     {
       endfile = 1;
