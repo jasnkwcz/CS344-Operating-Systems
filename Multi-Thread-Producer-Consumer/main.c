@@ -193,7 +193,7 @@ void* replaceNewline(void* arg)
     getBuff1(temp);
     //in the temp, replace newline character with space
     char* ls = strchr(temp, '\n');
-    temp[ls - temp] = ' ';
+    strcpy(&temp[ls - temp]," ");
     if (strcmp(temp, "STOP ") == 0)
     {
       endflag = 1;
