@@ -1,6 +1,6 @@
-// If you are not compiling with the gcc option --std=gnu99, then
-// uncomment the following line or you might get a compiler warning
-//#define _GNU_SOURCE
+//Joshua Sienkiewicz
+//CS344 - Operating Systems
+//Assignment 1: Movies
 
 #include <stdio.h>
 #include <stdlib.h>

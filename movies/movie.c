@@ -55,7 +55,6 @@ struct Movie *processFile(char *filePath)
     //ignore the column headers in the first line
     if (count == 0)
     {
-      getline(&currLine, &len, MovieFile);
       ++count;
       continue;
     }
@@ -123,14 +122,12 @@ struct Movie *createMovie(char *currLine)
 //*********************************
 void displayMoviesFromYear(int year, struct Movie *list)
 {
-  printf("Displaying movies from %d:\n", year);
-  int count;
+  int count = 0;
   struct Movie *curr = list;
   while (curr != NULL)
   {
     if (curr->year == year)
     {
-      printf("%s\n", curr->title);
       ++count;
     }
     curr = curr->next;
@@ -138,7 +135,19 @@ void displayMoviesFromYear(int year, struct Movie *list)
   if (count == 0)
   {
     printf("No available movies from %d\n", year);
+    return;
   }
+  curr = list;
+  printf("Displaying movies from %d:\n", year);
+  while (curr != NULL)
+  {
+    if (curr->year == year)
+    {
+      printf("%s\n", curr->title);
+    }
+    curr = curr->next;
+  }
+  
   return;
 }
 
@@ -183,13 +192,28 @@ void displayTopMovies(struct Movie *list)
 
 void displayMoviesInLanguage(char *langptr, struct Movie *list)
 {
-  printf("Displaying all movies in %s:\n", langptr);
   struct Movie *curr = list;
+  int count = 0;
   while (curr != NULL)
   {
     if (movieContainsLanguage(langptr, curr) == 1)
     {
-      printf("%d - %s\n", curr->year, curr->title);
+      ++count;
+    }
+    curr = curr->next;
+  }
+  if (count == 0)
+  {
+    fprintf(stderr, "No movies available in %s", langptr);
+    return;
+  }
+  printf("Displaying movies in %s\n", langptr);
+  curr = list;
+  while (curr != NULL)
+  {
+    if (movieContainsLanguage(langptr, curr) == 1)
+    {
+      printf("%d %s\n", curr->year, curr->title);
     }
     curr = curr->next;
   }
@@ -216,6 +240,8 @@ int movieContainsLanguage(char *langptr, struct Movie *node)
   }
   return 0;
 }
+
+
 
 //*********************************
 //The following code was adapted from the bubble sort implementation found on https://www.geeksforgeeks.org/c-program-bubble-sort-linked-list/
