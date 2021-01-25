@@ -102,7 +102,7 @@ void processLargest()
       if (strncmp(PREFIX, file->d_name, 7) == 0)
       {
         //check if file size is larger than the current max size
-        if ((int)dirstat.st_size > (int)maxstat.st_size)
+        if ((int)dirstat.st_size >= (int)maxstat.st_size)
         {
           max = file;
         }
@@ -140,8 +140,8 @@ void processSmallest()
       //then check if filename has prefix "movies_"
       if (strncmp(PREFIX, file->d_name, 7) == 0)
       {
-        //check if file size is larger than the current max size
-        if ((int)dirstat.st_size < (int)minstat.st_size)
+        //check if file size is less than the current min size
+        if ((int)dirstat.st_size <= (int)minstat.st_size)
         {
           min = file;
         }
