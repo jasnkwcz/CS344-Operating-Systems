@@ -127,10 +127,6 @@ void processSmallest()
   char extension[5];
   while ((file = readdir(dir)) != NULL)
   {
-    if (min == NULL)
-    {
-      min = file;
-    }
     stat(file->d_name, &dirstat);
     stat(min->d_name, &minstat);
 
