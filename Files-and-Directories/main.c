@@ -24,7 +24,7 @@ int main(void)
   do
   {
     //display main menu
-    printf("1: Select file to process\n2: Exit program\nSelect (1-2): ");
+    printf("1: Select file to process\n2: Exit program\nSelect (1-2): \n");
     scanf("%d", response.num);
 
     switch (*response.num)

@@ -45,7 +45,7 @@ void buildDir(char *filename)
   makeDirname(dirname);
   if (mkdir(dirname, 0750) != 0)
   {
-    printf("Error making directory. Error code %d", errno);
+    printf("Error making directory. Error code %d\n", errno);
   };
   //open the new dir
   DIR *dir = opendir(dirname);
