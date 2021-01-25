@@ -62,8 +62,8 @@ void buildDir(char *filename)
     strcpy(file, curr->year);
     strcat(file, ".txt");
     fd = open(file, O_RDWR | O_APPEND | O_CREAT, 0640);
-    wr = write(fd, curr->title, strlen(curr->title) + 1);
-    wr = write(fd, "\n", 2);
+    wr = write(fd, curr->title, strlen(curr->title));
+    wr = write(fd, "\n", 1);
     fd = close(fd);
     curr = curr->next;
   }
