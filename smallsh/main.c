@@ -21,6 +21,7 @@
 
 pid_t procs[MAXPROCS];
 int cpid_index;
+pid_t fg_cpid;
 
 struct Command
 {
@@ -37,7 +38,7 @@ struct Command *parseInput(char **line);
 void runCmd(struct Command *cmd);
 char* cd_builtin(struct Command *cmd);
 void exit_builtin();
-int status_builtin();
+int status_builtin(pid_t cpid);
 void externalCmd(struct Command *cmd);
 void displayCmd(struct Command *cmd);
 void clearCmd(struct Command *cmd);
@@ -125,12 +126,15 @@ struct Command* parseInput(char** line) {
 
     //initialize a variable to detect variables held in VAREXP
     varex = strstr(token, VAREXP);
-    if (varex != NULL)
-    {
-        //get the current process ID and convert it to a string
+
+    //get the current process ID and convert it to a string
         pid_t p = getpid();
         char pstr[8];
         sprintf(pstr, "%d", p);
+        
+    if (varex != NULL)
+    {
+        
         //allocate a string that is a copy of the token, so that we don't change the contents of the command line
         char *copystr = (char *)calloc(MAXCHARS, sizeof(char));
         strcpy(copystr, token);
@@ -179,6 +183,7 @@ struct Command* parseInput(char** line) {
         //handle everything else (command arguments)
         else {
             newCmd->args[nargc] = (char *)calloc(strlen(token) + 1, sizeof(char));
+            findAndReplace(&newCmd->args[nargc], VAREXP, pstr);
             strcpy(newCmd->args[nargc], token);
             ++nargc;
         }
@@ -241,7 +246,7 @@ void runCmd(struct Command *cmd)
 
     else if (strcmp(cmd->cmd, "status") == 0)
     {
-        status_builtin();
+        status_builtin(fg_cpid);
     }
 
     else if (strcmp(cmd->cmd, "exit") == 0)
@@ -263,6 +268,7 @@ void externalCmd(struct Command *cmd)
 {
     
     pid_t cpid = fork();
+    
     int cpstatus;
     switch (cpid)
     {
@@ -322,6 +328,7 @@ void externalCmd(struct Command *cmd)
             //handle foreground commands
             else
             {
+                fg_cpid = cpid;
                 waitpid(cpid, &cpstatus, 0);
                 break;
             }
@@ -379,16 +386,16 @@ Built-in command: status_builtin()
     If this command is run before any foreground command is run, then it should simply return the exit status 0.
     ignores the other built-in commands (cd and exit)
 */
-int status_builtin()
+int status_builtin(pid_t cpid)
 {
-    pid_t cpid;
     //sanity check, if no child process has executed yet
-    int cpstatus;
+    int cpstatus = 0;
 
-    if (waitpid(-1, &cpstatus, WNOHANG) == 0) {
+    if (waitpid(cpid, &cpstatus, WNOHANG) == 0) {
         return (EXIT_FAILURE);
     };
-    //the code below was adapted  from the reading material in the "process API - monitoring child processes" section
+    //the code below was adapted from the material in the "process API - monitoring child processes" section
+
     if(WIFEXITED(cpstatus)){
       printf("Child process { %d } exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
       fflush(stdout);
