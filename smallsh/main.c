@@ -182,9 +182,28 @@ struct Command* parseInput(char** line) {
 
         //handle everything else (command arguments)
         else {
-            newCmd->args[nargc] = (char *)calloc(strlen(token) + 1, sizeof(char));
-            findAndReplace(&newCmd->args[nargc], VAREXP, pstr);
-            strcpy(newCmd->args[nargc], token);
+            //check if there is an instance of variable "$$" in the current token
+            varex = strstr(token, VAREXP);
+            //if not, just add the argument to the argument list
+            if (varex == NULL)
+            {
+                newCmd->args[nargc] = (char *)calloc(strlen(token) + 1, sizeof(char));
+                strcpy(newCmd->args[nargc], token);
+            }
+            //otherwise, replace all instances of "$$"
+            else
+            {
+                //allocate a string that is a copy of the token, so that we don't change the contents of the command line
+                char *copystr = (char *)calloc(MAXCHARS, sizeof(char));
+                strcpy(copystr, token);
+                //replace all occurances of "$$" with the current process id
+                findAndReplace(&copystr, VAREXP, pstr);
+                //copy the replaced string into the argument list of the new command
+                newCmd->args[nargc] = (char *)calloc(strlen(copystr) + 1, sizeof(char));
+                strcpy(newCmd->args[nargc], copystr);
+                //let go of the copy string once we are done with it and its contents have been stored into the command
+                free(copystr);
+            }
             ++nargc;
         }
         newCmd->args[nargc] = NULL;
