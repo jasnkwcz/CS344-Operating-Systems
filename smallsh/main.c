@@ -284,15 +284,14 @@ void externalCmd()
     runs a non-built-in command by forking a child process and using exec() function
 */
 void externalCmd(struct Command *cmd)
-{
-    
+{   
     pid_t cpid = fork();
     
     int cpstatus;
     switch (cpid)
     {
         case -1:
-            printf("%s failed to execute\n", cmd->cmd);
+            printf("%s failed to execute.\n", cmd->cmd);
             fflush(stdout);
             exit(1);
             break;
@@ -301,36 +300,35 @@ void externalCmd(struct Command *cmd)
             //the following I/O redirection code was adapted from the lecture material for "Processes and I/O"
             if (cmd->inFile != NULL) 
             {
-                printf("infile is: %s\n", cmd->inFile);
                 int inf = open(cmd->inFile, O_RDONLY);
                 if (inf == -1) {
-                    perror("Could not open file");
+                    perror("Could not open file.\n");
                     exit(1);
                 }
                 int openinf = dup2(inf, 0);
                 if (openinf == -1) {
-                    perror("error opening file in child process");
+                    perror("Error opening input file.\n");
                     exit(1);
                 }
+                fcntl(inf, F_SETFD, FD_CLOEXEC);
             }
 
             if (cmd->outFile != NULL)
-                
             {
-                printf("outfile is: %s\n", cmd->outFile);
-                int outf = open(cmd->outFile, O_WRONLY | O_TRUNC | O_CREAT);
+                int outf = open(cmd->outFile, O_WRONLY | O_TRUNC | O_CREAT, 0666);
                 if (outf == -1) {
-                    perror("Could not open file");
+                    perror("Could not open file.");
                     exit(1);
                 }
-                int openoutf = dup2(outf, 0);
+                int openoutf = dup2(outf, 1);
                 if (openoutf == -1) {
-                    perror("error opening file in child process");
+                    perror("Error opening output file.");
                     exit(1);
                 }
+                fcntl(outf, F_SETFD, FD_CLOEXEC);
             }
             execvp(cmd->cmd, cmd->args);
-            perror("execvp failed");
+            perror("execvp failed\n");
             exit(EXIT_FAILURE);
 
         default:            
