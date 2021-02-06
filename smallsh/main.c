@@ -43,7 +43,7 @@ void externalCmd(struct Command *cmd);
 void displayCmd(struct Command *cmd);
 void clearCmd(struct Command *cmd);
 
-int main(void)
+int main(int argc, char *argv[])
 {
     //assign custom signal handlers for SIGINT and SIGSTP
     //this code was largely adapted/inspired by the lectures for signal handling
