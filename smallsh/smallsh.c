@@ -144,7 +144,6 @@ int main() {
                 case -1:
                     printf("%s failed to execute.\n", newCmd.cmd);
                     fflush(stdout);
-                    exit(1);
                     break;
                 case 0:
                     fflush(stdout);
@@ -161,7 +160,6 @@ int main() {
                             perror("Error opening input file.\n");
                             break;
                         }
-                        
                         fcntl(inf, F_SETFD, FD_CLOEXEC);
                     }
 
@@ -200,9 +198,9 @@ int main() {
                         break;
                     }
                 }
-                }
-                fflush(stdout);
             }
+            fflush(stdout);
+        }
     return(0);
 }
 
