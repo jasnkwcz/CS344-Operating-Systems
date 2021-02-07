@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     //initialize varaibles
     char *nline; //a command line
     char **nargv; //array of char pointers to hold the argument vector, whose first entry is the command itself
-    chdir(getenv("HOME"));
+    //chdir(getenv("HOME"));
     cpid_index = 0;
     int cpstatus;
 
@@ -293,6 +293,7 @@ void externalCmd(struct Command *cmd)
         case -1:
             printf("%s failed to execute.\n", cmd->cmd);
             fflush(stdout);
+            clearCmd(cmd);
             exit(1);
             break;
         case 0:
@@ -302,12 +303,14 @@ void externalCmd(struct Command *cmd)
             {
                 int inf = open(cmd->inFile, O_RDONLY);
                 if (inf == -1) {
-                    perror("Could not open file.\n");
+                    fprintf(stderr, "Could not open input file '%s'.\n", cmd->inFile);
+                    clearCmd(cmd);
                     exit(1);
                 }
                 int openinf = dup2(inf, 0);
                 if (openinf == -1) {
                     perror("Error opening input file.\n");
+                    clearCmd(cmd);
                     exit(1);
                 }
                 fcntl(inf, F_SETFD, FD_CLOEXEC);
@@ -317,18 +320,21 @@ void externalCmd(struct Command *cmd)
             {
                 int outf = open(cmd->outFile, O_WRONLY | O_TRUNC | O_CREAT, 0666);
                 if (outf == -1) {
-                    perror("Could not open file.");
+                    fprintf(stderr, "Could not open ouput file '%s'.\n", cmd->outFile);
+                    clearCmd(cmd);
                     exit(1);
                 }
                 int openoutf = dup2(outf, 1);
                 if (openoutf == -1) {
-                    perror("Error opening output file.");
+                    perror("Error opening output file.\n");
+                    clearCmd(cmd);
                     exit(1);
                 }
                 fcntl(outf, F_SETFD, FD_CLOEXEC);
             }
             execvp(cmd->cmd, cmd->args);
-            perror("execvp failed\n");
+            fprintf(stderr, "Could not execute command '%s'.\n", cmd->cmd);
+            clearCmd(cmd);
             exit(EXIT_FAILURE);
 
         default:            
