@@ -17,6 +17,7 @@
 #define MAXCHARS 2048
 #define MAXARGS 512
 #define IOFILE 256
+#define MAXPROCS 128
 #define PIDVAR "$$"
 
 struct Command
@@ -43,6 +44,10 @@ int main() {
     struct Command newCmd;
     bool sh = true;
     pid_t ppid = getpid();
+    pid_t cpid = 0;
+    pid_t procs[MAXPROCS];
+    int cpid_index;
+    pid_t fg_cpid;
 
     while (sh == true)
     {
@@ -63,14 +68,141 @@ int main() {
         parseCmd(&newCmd);
 
         //check if the command is built-in (exit, status, cd) and run
+        if (strcmp(newCmd.cmd, "cd") == 0)
+        {
+            char newdir[256];
+            if (newCmd.nargv[1] != NULL) {
+                //if cd is successful (path found), chdir returns 0
+                if (chdir(newCmd.nargv[1]) == 0)
+                {
+                    fflush(stdout);
+                    strcpy(newdir, getenv("PWD"));
+                }
 
-        //if command is external, execute using execvp
+                else
+                {
+                    printf("Directory not found.\n");
+                    fflush(stdout);
+                    strcpy(newdir, getenv("PWD"));
+                }
+            }
 
-        //clean up command struct 
-        displayCmd(&newCmd);
-        fflush(stdout);
-    }
+            //case where no arguments provided to cd, set current directory to home environment variable value
+            else {
+                chdir(getenv("HOME"));
+                strcpy(newdir, getenv("PWD"));
+            }
+            setenv("PWD", newdir, 1);
+            char buffer[MAXCHARS];
+            getcwd(buffer, MAXCHARS);
+            fflush(stdout);
+        }
 
+        else if (strcmp(newCmd.cmd, "status") == 0)
+        {
+            int cpstatus = 0;
+            //if no foreground process has been run yet, return exit status 0
+            if (cpid == 0) {
+                printf("Exit status 0.\n");
+                fflush(stdout);
+
+            }
+            else if (waitpid(cpid, &cpstatus, WNOHANG) == 0) 
+            {
+                return (EXIT_FAILURE);
+            }
+            //the code below was adapted from the material in the "process API - monitoring child processes" section
+
+            else if(WIFEXITED(cpstatus) != 0)
+            {
+            printf("Child process %d exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
+            fflush(stdout);
+            } 
+            else 
+            {
+            printf("Child process %d exited abnormally due to signal %d\n", cpid, WTERMSIG(cpstatus));
+            fflush(stdout);
+            }
+            return (EXIT_SUCCESS);
+        }
+
+        else if (strcmp(newCmd.cmd, "exit") == 0)
+        {
+            //kill off all child processes and kill parent process
+            sh = false;
+            kill(0, SIGKILL);
+        }
+
+        else
+        {
+            //execute an external command
+            cpid = fork();
+            int cpstatus;
+
+            switch (cpid)
+            {
+                case -1:
+                    printf("%s failed to execute.\n", newCmd.cmd);
+                    fflush(stdout);
+                    exit(1);
+                    break;
+                case 0:
+                    fflush(stdout);
+                    //the following I/O redirection code was adapted from the lecture material for "Processes and I/O"
+                    if (newCmd.infile != NULL) 
+                    {
+                        int inf = open(newCmd.infile, O_RDONLY);
+                        if (inf == -1) {
+                            fprintf(stderr, "Could not open input file '%s'.\n", newCmd.infile);
+                            break;
+                        }
+                        int openinf = dup2(inf, 0);
+                        if (openinf == -1) {
+                            perror("Error opening input file.\n");
+                            break;
+                        }
+                        
+                        fcntl(inf, F_SETFD, FD_CLOEXEC);
+                    }
+
+                    if (newCmd.outfile != NULL)
+                    {
+                        int outf = open(newCmd.outfile, O_WRONLY | O_TRUNC | O_CREAT, 0666);
+                        if (outf == -1) {
+                            fprintf(stderr, "Could not open ouput file '%s'.\n", newCmd.outfile);
+                        }
+                        int openoutf = dup2(outf, 1);
+                        if (openoutf == -1) {
+                            perror("Error opening output file.\n");
+                        }
+                        fcntl(outf, F_SETFD, FD_CLOEXEC);
+                    }
+                    execvp(newCmd.cmd, newCmd.nargv);
+                    fprintf(stderr, "Could not execute command '%s'.\n", newCmd.cmd);
+                    break;
+
+                default:            
+                    //handle background commands
+                    
+                    procs[cpid_index] = cpid;
+                    ++cpid_index;
+                    if (newCmd.bg != 0)
+                    {
+                        fflush(stdout);
+                        break;
+                    }
+
+                    //handle foreground commands
+                    else
+                    {
+                        fg_cpid = cpid;
+                        waitpid(cpid, &cpstatus, 0);
+                        break;
+                    }
+                }
+                }
+                fflush(stdout);
+            }
     return(0);
 }
 
@@ -181,16 +313,16 @@ void pid_replace(char* line, const char* find, const char* replace)
  * void parseCmd(struct Command* newCmd)
  * 
  * parse a command line into tokens and store them in a command struct
-
 *********************************************************************/
 void parseCmd(struct Command* newCmd)
 {
     //initialize variables to tokenize command line string
-    char *token;
-    char *saveptr;
+    char* token;
+    char* saveptr;
+    char* buffer = strdup(newCmd->line);
 
     //first token is the command, save it as both the command and the first entry in args[]
-    token = strtok_r(newCmd->line, " ", &saveptr);
+    token = strtok_r(buffer, " ", &saveptr);
     newCmd->nargv[0] = strdup(token);
     newCmd->cmd = strdup(token);
     ++newCmd->nargc;
@@ -228,7 +360,6 @@ void parseCmd(struct Command* newCmd)
                 ++(newCmd->nargc);
         }
         newCmd->nargv[newCmd->nargc] = NULL;
-        printf("nargc is now: %d\n", newCmd->nargc);
     }
     return;
 }
@@ -242,6 +373,7 @@ void parseCmd(struct Command* newCmd)
 *********************************************************************/
 void displayCmd(struct Command *cmd)
 {
+    printf("Line: %s\n", cmd->line);
     printf("Command: %s\n", cmd->cmd);
     printf("Arguments: \n");
     for (int i = 0; i < cmd->nargc; i++)
@@ -260,41 +392,4 @@ void displayCmd(struct Command *cmd)
     {
         printf("Command will run in background.\n");
     }
-}
-
-void runCmd(struct Command *cmd)
-{
-    
-    if (strcmp(cmd->cmd, "cd") == 0)
-    {
-        /*
-        //change the PWD to the directory returned by the cd builtin
-        char *newdir = cd_builtin(cmd);
-        setenv("PWD", newdir, 1);
-        char buffer[MAXCHARS];
-        getcwd(buffer, MAXCHARS);
-        printf("Current directory: %s\n", buffer);
-        fflush(stdout);
-        */
-       printf("Running command: %s\n", cmd->cmd);
-    }
-
-    else if (strcmp(cmd->cmd, "status") == 0)
-    {
-        //status_builtin(fg_cpid);
-        printf("Running command: %s\n", cmd->cmd);
-    }
-
-    else if (strcmp(cmd->cmd, "exit") == 0)
-    {
-        //exit_builtin();
-        printf("Running command: %s\n", cmd->cmd);
-    }
-
-    else
-    {
-        //externalCmd(cmd);
-        printf("Running command: %s\n", cmd->cmd);
-    }
-    return;
 }
