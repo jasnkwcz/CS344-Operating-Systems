@@ -18,41 +18,59 @@
 #define MAXARGS 512
 #define IOFILE 256
 #define MAXPROCS 128
+#define ARGLEN 64
 #define PIDVAR "$$"
 
 struct Command
 {
     char line[MAXCHARS];
-    char* cmd;
-    char* nargv[MAXARGS];
-    char* infile;
-    char* outfile;
+    char cmd[ARGLEN];
+    char nargv[MAXARGS][ARGLEN];
+    char infile[ARGLEN];
+    char outfile[ARGLEN];
     int nargc;
     int bg;
 };
 
 
 void readCmd(char* input);
-void clearCmd(struct Command* cmd);
+void initCmd(struct Command* cmd);
 void pid_replace(char* cmd, const char* find, const char* replace);
 void parseCmd(struct Command* cmd);
 void displayCmd(struct Command *cmd);
+void handle_SIGTSTP(int sig);
 
+bool allow_bg = true;
 
-int main() {
-    //initialize relevant members of a new command struct
+int main() 
+{
     struct Command newCmd;
     bool sh = true;
     pid_t ppid = getpid();
     pid_t cpid = 0;
-    pid_t procs[MAXPROCS];
-    int cpid_index;
-    pid_t fg_cpid;
+    pid_t bg_procs[MAXPROCS];
+    int bg_procs_index = 0;
+    pid_t fg_cpid = 0;
+
+
+
+    //assign custom signal handler to SIGTSTP
+    struct sigaction SIGTSTP_action = {0};
+    SIGTSTP_action.sa_handler = handle_SIGTSTP;
+    sigfillset(&SIGTSTP_action.sa_mask);
+    SIGTSTP_action.sa_flags = 0;
+    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
     while (sh == true)
     {
-        //clear out the command struct
-        clearCmd(&newCmd);
+        //assign signal handler to ignore SIGINT (signal handling code taken from Exploration: "Signal handling API")
+        struct sigaction SIGINT_action = {0};
+        SIGINT_action.sa_handler = SIG_IGN;
+        sigfillset(&SIGINT_action.sa_mask);
+        SIGINT_action.sa_flags = 0;
+        sigaction(SIGINT, &SIGINT_action, NULL);
+
+        initCmd(&newCmd);
         //get command from standard input
         readCmd(newCmd.line);
         fflush(stdout);
@@ -71,7 +89,8 @@ int main() {
         if (strcmp(newCmd.cmd, "cd") == 0)
         {
             char newdir[256];
-            if (newCmd.nargv[1] != NULL) {
+            if (strcmp(newCmd.nargv[1], ""))
+            {
                 //if cd is successful (path found), chdir returns 0
                 if (chdir(newCmd.nargv[1]) == 0)
                 {
@@ -88,7 +107,8 @@ int main() {
             }
 
             //case where no arguments provided to cd, set current directory to home environment variable value
-            else {
+            else 
+            {
                 chdir(getenv("HOME"));
                 strcpy(newdir, getenv("PWD"));
             }
@@ -102,14 +122,17 @@ int main() {
         {
             int cpstatus = 0;
             //if no foreground process has been run yet, return exit status 0
-            if (cpid == 0) {
-                printf("Exit status 0.\n");
+            if (fg_cpid == 0) 
+            {
+                printf("Exit status 0\n");
                 fflush(stdout);
 
             }
-            else if (waitpid(cpid, &cpstatus, WNOHANG) == 0) 
+            //
+            else if (waitpid(fg_cpid, &cpstatus, WNOHANG) == 0)
             {
-                return (EXIT_FAILURE);
+                printf("Exit status 0\n");
+                fflush(stdout);
             }
             //the code below was adapted from the material in the "process API - monitoring child processes" section
 
@@ -118,12 +141,12 @@ int main() {
             printf("Child process %d exited normally with status %d\n", cpid, WEXITSTATUS(cpstatus));
             fflush(stdout);
             } 
+
             else 
             {
             printf("Child process %d exited abnormally due to signal %d\n", cpid, WTERMSIG(cpstatus));
             fflush(stdout);
             }
-            return (EXIT_SUCCESS);
         }
 
         else if (strcmp(newCmd.cmd, "exit") == 0)
@@ -142,50 +165,66 @@ int main() {
             switch (cpid)
             {
                 case -1:
-                    printf("%s failed to execute.\n", newCmd.cmd);
+                    printf("%s failed to execute\n", newCmd.cmd);
                     fflush(stdout);
                     break;
                 case 0:
                     fflush(stdout);
+                    //foreground processes must terminate on receiving SIGINT
+                    if (newCmd.bg == 0) {
+                        SIGINT_action.sa_handler = SIG_DFL;
+                        sigaction(SIGINT, &SIGINT_action, NULL);
+                    }
+
                     //the following I/O redirection code was adapted from the lecture material for "Processes and I/O"
-                    if (newCmd.infile != NULL) 
+                    if (strcmp(newCmd.infile, "")) 
                     {
                         int inf = open(newCmd.infile, O_RDONLY);
-                        if (inf == -1) {
-                            fprintf(stderr, "Could not open input file '%s'.\n", newCmd.infile);
+                        if (inf == -1) 
+                        {
+                            fprintf(stderr, "Could not open input file '%s'\n", newCmd.infile);
                             break;
                         }
                         int openinf = dup2(inf, 0);
-                        if (openinf == -1) {
-                            perror("Error opening input file.\n");
+                        if (openinf == -1) 
+                        {
+                            perror("Error opening input file\n");
                             break;
                         }
                         fcntl(inf, F_SETFD, FD_CLOEXEC);
                     }
 
-                    if (newCmd.outfile != NULL)
+                    if (strcmp(newCmd.outfile, ""))
                     {
                         int outf = open(newCmd.outfile, O_WRONLY | O_TRUNC | O_CREAT, 0666);
                         if (outf == -1) {
-                            fprintf(stderr, "Could not open ouput file '%s'.\n", newCmd.outfile);
+                            fprintf(stderr, "Could not open ouput file '%s'\n", newCmd.outfile);
                         }
                         int openoutf = dup2(outf, 1);
                         if (openoutf == -1) {
-                            perror("Error opening output file.\n");
+                            perror("Error opening output file\n");
                         }
                         fcntl(outf, F_SETFD, FD_CLOEXEC);
                     }
-                    execvp(newCmd.cmd, newCmd.nargv);
-                    fprintf(stderr, "Could not execute command '%s'.\n", newCmd.cmd);
+                    char* execargv[MAXARGS];
+                    for (int i = 0; i < newCmd.nargc; i++)
+                    {
+                        execargv[i] = strdup(newCmd.nargv[i]);
+                    }
+                    execvp(newCmd.cmd, execargv);
+                    fprintf(stderr, "Could not execute command '%s'\n", newCmd.cmd);
                     break;
 
                 default:            
                     //handle background commands
                     
-                    procs[cpid_index] = cpid;
-                    ++cpid_index;
-                    if (newCmd.bg != 0)
+                    
+                    if (newCmd.bg != 0 && allow_bg == true)
                     {
+                        
+                        bg_procs[bg_procs_index] = cpid;
+                        ++bg_procs_index;
+                        printf("Executing command '%s' with process ID %d in background\n", newCmd.cmd, cpid);
                         fflush(stdout);
                         break;
                     }
@@ -197,11 +236,31 @@ int main() {
                         waitpid(cpid, &cpstatus, 0);
                         break;
                     }
-                }
             }
-            fflush(stdout);
         }
-    return(0);
+        //check the status of all processes running in background before looping again. show process ID and exit status of any terminated bg commands
+        int cpstatus;
+        for (int i = 0; i < bg_procs_index; i++)
+        {
+            if (waitpid(bg_procs[i], &cpstatus, WNOHANG) != 0)
+            {
+                if(WIFEXITED(cpstatus) != 0)
+                {
+                printf("Background process %d exited normally with status %d\n", bg_procs[i], WEXITSTATUS(cpstatus));
+                fflush(stdout);
+                } 
+
+                else 
+                {
+                printf("Background process %d exited abnormally due to signal %d\n", bg_procs[i], WTERMSIG(cpstatus));
+                fflush(stdout);
+                }
+                --bg_procs_index;
+            }
+        }
+
+        
+    }
 }
 
 /********************************************************************
@@ -225,39 +284,33 @@ void readCmd(char* line)
 
 
 /********************************************************************
- * void clearCmd(struct Command* cmd)
+ * void initCmd(struct Command* cmd)
  * 
  * initialize all data members of a command struct so that it can be
  * used/reused during a given iteration of the main loop
 *********************************************************************/
-void clearCmd(struct Command* cmd)
+void initCmd(struct Command* cmd)
 {
-    //clear line
-    memset(cmd->line, 0, MAXCHARS);
-    //clear cmd
-    cmd->cmd = NULL;
-    //clear nargv[]
-    int i = 0;
-    while (cmd->nargv[i] != NULL && i <= cmd->nargc)
-    {
-        cmd->nargv[i] = NULL;
-        ++i;
-    }
+    /*
+    char line[MAXCHARS];
+    char cmd[ARGLEN];
+    char nargv[MAXARGS][ARGLEN];
+    char infile[ARGLEN];
+    char outfile[ARGLEN];
+    int nargc;
+    int bg;
+    */
 
-    //clear infile
-    if (cmd->infile != NULL)
-    {
-        cmd->infile = NULL; 
-    }
-    
-    //clear outfile
-    if (cmd->outfile != NULL)
-    {
-        cmd->outfile = NULL;
-    }
-    //reset nargc and bg to 0
+    strcpy(cmd->line, "");
+    strcpy(cmd->cmd, "");
+    strcpy(cmd->infile, "");
+    strcpy(cmd->outfile, "");
     cmd->nargc = 0;
     cmd->bg = 0;
+    for (int i = 0; i < MAXARGS; ++i)
+    {
+        strcpy(cmd->nargv[i], "");
+    }
     return;
 }
 
@@ -321,8 +374,8 @@ void parseCmd(struct Command* newCmd)
 
     //first token is the command, save it as both the command and the first entry in args[]
     token = strtok_r(buffer, " ", &saveptr);
-    newCmd->nargv[0] = strdup(token);
-    newCmd->cmd = strdup(token);
+    strcpy(newCmd->nargv[0], token);
+    strcpy(newCmd->cmd, token);
     ++newCmd->nargc;
 
     while ((token = strtok_r(NULL, " ", &saveptr))!= NULL)
@@ -331,14 +384,14 @@ void parseCmd(struct Command* newCmd)
         if (strcmp(token, "<") == 0) 
         {
             token = strtok_r(NULL, " ", &saveptr);
-            newCmd->infile = strdup(token);
+            strcpy(newCmd->infile, token);
         }
 
         //handle the output file delimiter, immediately get the next token and store it as the command's outfile
         else if (strcmp(token, ">") == 0) 
         {
             token = strtok_r(NULL, " ", &saveptr);
-            newCmd->outfile = strdup(token);
+            strcpy(newCmd->outfile, token);
         }
 
         //handle commands running in the background
@@ -354,10 +407,9 @@ void parseCmd(struct Command* newCmd)
         else 
         {
             //if not, just add the argument to the argument list
-                newCmd->nargv[newCmd->nargc] = strdup(token);
+                strcpy(newCmd->nargv[newCmd->nargc], token);
                 ++(newCmd->nargc);
         }
-        newCmd->nargv[newCmd->nargc] = NULL;
     }
     return;
 }
@@ -371,23 +423,46 @@ void parseCmd(struct Command* newCmd)
 *********************************************************************/
 void displayCmd(struct Command *cmd)
 {
-    printf("Line: %s\n", cmd->line);
-    printf("Command: %s\n", cmd->cmd);
+    if (strcmp(cmd->line, ""))
+    {
+       printf("Line: %s\n", cmd->line); 
+    }
+    if (strcmp(cmd->cmd, ""))
+    {
+       printf("Cmd: %s\n", cmd->cmd); 
+    }
+
     printf("Arguments: \n");
     for (int i = 0; i < cmd->nargc; i++)
     {
-        printf("%s\n", cmd->nargv[i]);
+        printf("Arg %d: %s\n", i, cmd->nargv[i]);
     }
-    if (cmd->infile != NULL)
+    if (strcmp(cmd->infile, ""))
     {
         printf("Input file is: %s\n", cmd->infile);
     }
-    if (cmd->outfile != NULL)
+    if (strcmp(cmd->outfile, ""))
     {
         printf("Output file is: %s\n", cmd->outfile);
     }
     if (cmd->bg == 1)
     {
         printf("Command will run in background.\n");
+    }
+}
+
+
+void handle_SIGTSTP(int sig)
+{
+    char* off = "Background commands are now disabled\n";
+    char* on = "Background commands are now enabled\n";
+    allow_bg = !allow_bg;
+    if(allow_bg)
+    {
+        write(STDOUT_FILENO, on, 37);
+    }
+    else
+    {
+        write(STDOUT_FILENO, off, 38);
     }
 }
