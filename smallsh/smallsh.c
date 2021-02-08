@@ -454,15 +454,15 @@ void displayCmd(struct Command *cmd)
 
 void handle_SIGTSTP(int sig)
 {
-    char* off = "Background commands are now disabled\n";
-    char* on = "Background commands are now enabled\n";
+    char* off = "\nBackground commands are now disabled\n";
+    char* on = "\nBackground commands are now enabled\n";
     allow_bg = !allow_bg;
     if(allow_bg)
     {
-        write(STDOUT_FILENO, on, 37);
+        write(STDOUT_FILENO, on, 36);
     }
     else
     {
-        write(STDOUT_FILENO, off, 38);
+        write(STDOUT_FILENO, off, 37);
     }
 }
