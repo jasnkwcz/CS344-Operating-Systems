@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-char chars[27] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+char chars[27] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
 
 int writekeys(int keylen);
 

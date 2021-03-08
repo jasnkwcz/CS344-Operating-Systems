@@ -10,7 +10,6 @@
 
 
 #define BUFFSIZE 1024
-#define MAXSIZE 70000
 #define CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ "
 
 
@@ -32,15 +31,14 @@ int main(int argc, char* argv[])
   int pid;
   pid_t conn_array[5];
   char recv_buff[BUFFSIZE];
-  int recv_size = 0;
+  ssize_t recv_size;
   int cpid_status;
-  char plaintext[MAXSIZE];
-  char key[MAXSIZE];
-  char msg_buff[MAXSIZE * 2];
-  char ciphertext[MAXSIZE];
+  char plaintext[BUFFSIZE];
+  char key[BUFFSIZE];
+  char msg_buff[BUFFSIZE];
+  char ciphertext[BUFFSIZE];
   char* saveptr;
   ssize_t send_size;
-  char ack[] = "ok";
 
   //check for valid command, error and exit if no port is spec'd
   if (argc < 2)
@@ -86,30 +84,28 @@ int main(int argc, char* argv[])
     switch(pid)
     {
       case -1:
-        perror("Error in creating child process to serve client\n");
+        perror("Error in creating child process to serve client.\n");
         break;
   
       case 0:
         memset(recv_buff, '\0', BUFFSIZE);
         memset(plaintext, '\0', BUFFSIZE);
-        memset(key, '\0', MAXSIZE);
-        memset(msg_buff, '\0', MAXSIZE * 2);
+        memset(key, '\0', BUFFSIZE);
+        memset(msg_buff, '\0', BUFFSIZE);
         recv_size = 0;
         char * token;
 
         //recv first msg from client, header specifying message length
-        recv_size += recv(conn_socket, recv_buff, BUFFSIZE, 0);
+        recv(conn_socket, recv_buff, BUFFSIZE, 0);
         msg_size = atoi(recv_buff);
 
+        char ack[] = "ok";
         send(conn_socket, ack, strlen(ack), 0);
 
         //recieve into buffer until message end
-        while(recv_size <= msg_size)
-        {
-          recv_size += recv(conn_socket, recv_buff, 1024, 0);
+          recv_size += recv(conn_socket, recv_buff, BUFFSIZE, 0);
           strcat(msg_buff, recv_buff);
           memset(recv_buff, '\0', BUFFSIZE);
-        }
 
         //split the strings using the newline character, then copy
         token = strtok_r(msg_buff, "\n", &saveptr);
