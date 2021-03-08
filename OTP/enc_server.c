@@ -92,8 +92,7 @@ int main(int argc, char* argv[])
   
       case 0:
         memset(recv_buff, '\0', BUFFSIZE);
-        memset(plaintext, '\0', BUFFSIZE);
-        memset(key, '\0', MAXSIZE);
+        memset(plaintext, '\0', MAXSIZE);
         memset(msg_buff, '\0', 140000);
         recv_size = 0;
         char * token;
@@ -120,19 +119,31 @@ int main(int argc, char* argv[])
           remaining -= k;
         }
 
-        printf("SERVER: recieved message:\n%s\n", msg_buff);
-
         //split the strings using the newline character, then copy
         token = strtok_r(msg_buff, "\n", &saveptr);
         strcpy(plaintext, token);
         token = strtok_r(NULL, "\n", &saveptr);
-        strcpy(key, token);
+    
 
         //encrypt the plaintext using the key using ctoi and itoc functions
-        send_size = encryptString(plaintext, key, ciphertext);
+        send_size = encryptString(plaintext, token, ciphertext);
 
         //send the encrypted string back to the client
-        send(conn_socket, ciphertext, send_size, 0);
+        sent = 0;
+        remaining = send_size;
+        k = 0;
+        while(sent < send_size)
+        {
+          k = send(conn_socket, ciphertext, send_size, 0);
+          if (k == -1)
+          {
+            perror("Error recieving data from client\n");
+            exit(EXIT_FAILURE);
+          }
+          sent += k;
+          remaining -= k;
+        }
+
         //close the client connection
         close(conn_socket);
         return 0;

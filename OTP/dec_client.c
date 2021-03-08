@@ -31,42 +31,43 @@ int main(int argc, char* argv[])
     char header[BUFFSIZE];
     int sent, recvd, remaining;
     char recv_buffer[MAXSIZE];
-    char plaintext[MAXSIZE];
+    char ciphertext[MAXSIZE];
     char key[MAXSIZE];
     FILE * plain_file;
     FILE * key_file;
     int read_file;
     int write_chars;
     char send_buff[1024];
+    char plaintext[MAXSIZE];
 
 
-    //check coomand syntax
+    //check comand syntax
     if(argc < 4)
     {
-        perror("Use: enc_client <plaintext> <key> <port>\n");
+        perror("Use: enc_client <ciphertext> <key> <port>\n");
         exit(EXIT_FAILURE);
     }
     
-    memset(plaintext, '\0', MAXSIZE);
+    memset(ciphertext, '\0', MAXSIZE);
     memset(key, '\0', MAXSIZE);
     memset(message, '\0', 2 * MAXSIZE);
 
     //build the message to send to the server
     plain_file = fopen(argv[1], "r");
-    fgets(plaintext, MAXSIZE * 2, plain_file);
+    fgets(ciphertext, MAXSIZE * 2, plain_file);
     key_file = fopen(argv[2], "r");
     fgets(key, MAXSIZE * 2, key_file);
 
-    if(strlen(key) < strlen(plaintext))
+    if(strlen(key) < strlen(ciphertext))
     {
         perror("CLIENT: key is too short to encrypt plaintext\n");
         exit(EXIT_FAILURE);
     }
 
     //validate input
-    if (validateString(plaintext) < 0)
+    if (validateString(ciphertext) < 0)
     {
-        perror("CLIENT: Plaintext input contains invalid characters\n");
+        perror("CLIENT: Ciphertext input contains invalid characters\n");
         exit(EXIT_FAILURE);
     }
 
@@ -76,7 +77,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    strcat(message, plaintext);
+    strcat(message, ciphertext);
     strcat(message, key);
 
 
@@ -113,10 +114,10 @@ int main(int argc, char* argv[])
     //get ack message from server
     memset(recv_buffer, '\0', MAXSIZE);
     recv(client_socket, recv_buffer, MAXSIZE, 0);
-    char ack[] = "enc";
+    char ack[] = "dec";
     if (strcmp(recv_buffer, ack) != 0)
     {
-        perror("CLIENT: connecting to servers other than enc_server is not allowed\n");
+        perror("CLIENT: connecting to servers other than dec_server is not allowed\n");
         exit(EXIT_FAILURE);
     }
     memset(recv_buffer, '\0', MAXSIZE);
@@ -130,23 +131,21 @@ int main(int argc, char* argv[])
         k = send(client_socket, message + sent, remaining, 0);
         if (k == -1)
         {
-            perror("Client: there was an issue sending data to the server\n");
+            perror("CLIENT: there was an issue sending data to the server\n");
             exit(EXIT_FAILURE);
         }
         sent += k;
         remaining -= k;
     }
-
     if (sent < 0)
     {
         perror("CLIENT: Could not send to server\n");
         exit(EXIT_FAILURE);
     }
-    
 
-    //recieve the ciphertext from the server
+    //recieve the plaintext from the server
     memset(recv_buffer, '\0', MAXSIZE);
-    message_length = strlen(plaintext) - 1;
+    message_length = strlen(ciphertext) - 1;
     recvd = 0;
     remaining = message_length;
     while (recvd < message_length)
@@ -162,7 +161,6 @@ int main(int argc, char* argv[])
     }
     
     printf("%s\n", recv_buffer);
-
     //close the socket and terminate
     close(client_socket);
     exit(EXIT_SUCCESS);

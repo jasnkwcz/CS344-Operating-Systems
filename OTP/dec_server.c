@@ -10,14 +10,14 @@
 
 
 #define BUFFSIZE 1024
+#define MAXSIZE 70000
 #define CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ "
 
 
 int ctoi(char c);
 char itoc(int i);
 void setupAddressStruct(struct sockaddr_in* address, int portNumber);
-int encryptString(char* plaintext, char* key, char* ciphertext);
-
+int decryptString(char* plaintext, char* key, char* ciphertext);
 
 int main(int argc, char* argv[])
 {
@@ -31,14 +31,16 @@ int main(int argc, char* argv[])
   int pid;
   pid_t conn_array[5];
   char recv_buff[BUFFSIZE];
-  ssize_t recv_size;
+  int recv_size = 0;
   int cpid_status;
-  char plaintext[BUFFSIZE];
-  char key[BUFFSIZE];
-  char msg_buff[BUFFSIZE];
-  char ciphertext[BUFFSIZE];
+  char plaintext[MAXSIZE];
+  char key[MAXSIZE];
+  char msg_buff[140000];
+  char ciphertext[MAXSIZE];
   char* saveptr;
   ssize_t send_size;
+  char ack[] = "dec";
+  int recvd, remaining, sent;
 
   //check for valid command, error and exit if no port is spec'd
   if (argc < 2)
@@ -84,40 +86,62 @@ int main(int argc, char* argv[])
     switch(pid)
     {
       case -1:
-        perror("Error in creating child process to serve client.\n");
+        perror("Error in creating child process to serve client\n");
         break;
   
       case 0:
         memset(recv_buff, '\0', BUFFSIZE);
-        memset(plaintext, '\0', BUFFSIZE);
-        memset(key, '\0', BUFFSIZE);
-        memset(msg_buff, '\0', BUFFSIZE);
+        memset(ciphertext, '\0', MAXSIZE);
+        memset(msg_buff, '\0', 140000);
         recv_size = 0;
         char * token;
 
         //recv first msg from client, header specifying message length
-        recv(conn_socket, recv_buff, BUFFSIZE, 0);
+        recv_size += recv(conn_socket, recv_buff, BUFFSIZE, 0);
         msg_size = atoi(recv_buff);
 
-        char ack[] = "ok";
         send(conn_socket, ack, strlen(ack), 0);
 
         //recieve into buffer until message end
-          recv_size += recv(conn_socket, recv_buff, BUFFSIZE, 0);
-          strcat(msg_buff, recv_buff);
-          memset(recv_buff, '\0', BUFFSIZE);
+        recvd = 0;
+        remaining = msg_size;
+        int k;
+        while (recvd < msg_size)
+        {
+          k = recv(conn_socket, msg_buff + recvd, remaining, 0);
+          if (k == -1)
+          {
+            perror("Error recieving data from client\n");
+            exit(EXIT_FAILURE);
+          }
+          recvd += k;
+          remaining -= k;
+        }
 
         //split the strings using the newline character, then copy
         token = strtok_r(msg_buff, "\n", &saveptr);
-        strcpy(plaintext, token);
+        strcpy(ciphertext, token);
         token = strtok_r(NULL, "\n", &saveptr);
-        strcpy(key, token);
 
-        //encrypt the plaintext using the key using ctoi and itoc functions
-        send_size = encryptString(plaintext, key, ciphertext);
+        //decrypt the plaintext using the key using ctoi and itoc functions
+        send_size = decryptString(ciphertext, token, plaintext);
 
-        //send the encrypted string back to the client
-        send(conn_socket, ciphertext, send_size, 0);
+        //send the decrypted string back to the client
+        sent = 0;
+        remaining = send_size;
+        k = 0;
+        while(sent < send_size)
+        {
+          k = send(conn_socket, plaintext, send_size, 0);
+          if (k == -1)
+          {
+            perror("Error recieving data from client\n");
+            exit(EXIT_FAILURE);
+          }
+          sent += k;
+          remaining -= k;
+        }
+
         //close the client connection
         close(conn_socket);
         return 0;
@@ -161,10 +185,10 @@ void setupAddressStruct(struct sockaddr_in* address, int portNumber)
   address->sin_addr.s_addr = INADDR_ANY;
 }
 
-int encryptString(char* plaintext, char* key, char* ciphertext)
+int decryptString(char* ciphertext, char* key, char* plaintext)
 {
-  int size = strlen(plaintext);
-  memset(ciphertext, '\0', BUFFSIZE);
+  int size = strlen(ciphertext);
+  memset(plaintext, '\0', BUFFSIZE);
   char cipher_char;
   int cipher_int;
   char plain_char;
@@ -176,16 +200,23 @@ int encryptString(char* plaintext, char* key, char* ciphertext)
 
   for (int i = 0; i < size; i++)
   {
-    plain_char = plaintext[i];
-    plain_int = ctoi(plain_char);
-
-    key_char = key[i];
-    key_int = ctoi(key_char);
-
-    cipher_int = (key_int + plain_int) % 27;
-    cipher_char = itoc(cipher_int);
-    ciphertext[i] = cipher_char;
+    //convert the ciphertext char to an int
+    cipher_int = ctoi(ciphertext[i]);
+    //convert the key char to an int
+    key_int = ctoi(key[i]);
+    //subtract key char from cipher char
+    plain_int = cipher_int - key_int;
+    //if less than 0, add 27
+    if (plain_int < 0)
+    {
+      plain_int += 27;
+    }
+    //convert result to corresponding plaintext char
+    plain_char = itoc(plain_int);
+    //append plaintext char to plaintext array
+    plaintext[i] = plain_char;
+    //increment counter
     ++length;
   }
-  return strlen(ciphertext);
+  return length;
 }
