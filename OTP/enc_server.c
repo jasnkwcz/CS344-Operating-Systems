@@ -36,11 +36,12 @@ int main(int argc, char* argv[])
   int cpid_status;
   char plaintext[MAXSIZE];
   char key[MAXSIZE];
-  char msg_buff[MAXSIZE * 2];
+  char msg_buff[140000];
   char ciphertext[MAXSIZE];
   char* saveptr;
   ssize_t send_size;
-  char ack[] = "ok";
+  char ack[] = "enc";
+  int recvd, remaining, sent;
 
   //check for valid command, error and exit if no port is spec'd
   if (argc < 2)
@@ -93,7 +94,7 @@ int main(int argc, char* argv[])
         memset(recv_buff, '\0', BUFFSIZE);
         memset(plaintext, '\0', BUFFSIZE);
         memset(key, '\0', MAXSIZE);
-        memset(msg_buff, '\0', MAXSIZE * 2);
+        memset(msg_buff, '\0', 140000);
         recv_size = 0;
         char * token;
 
@@ -104,12 +105,22 @@ int main(int argc, char* argv[])
         send(conn_socket, ack, strlen(ack), 0);
 
         //recieve into buffer until message end
-        while(recv_size <= msg_size)
+        recvd = 0;
+        remaining = msg_size;
+        int k;
+        while (recvd < msg_size)
         {
-          recv_size += recv(conn_socket, recv_buff, 1024, 0);
-          strcat(msg_buff, recv_buff);
-          memset(recv_buff, '\0', BUFFSIZE);
+          k = recv(conn_socket, msg_buff + recvd, remaining, 0);
+          if (k == -1)
+          {
+            perror("Error recieving data from client\n");
+            exit(EXIT_FAILURE);
+          }
+          recvd += k;
+          remaining -= k;
         }
+
+        printf("SERVER: recieved message:\n%s\n", msg_buff);
 
         //split the strings using the newline character, then copy
         token = strtok_r(msg_buff, "\n", &saveptr);

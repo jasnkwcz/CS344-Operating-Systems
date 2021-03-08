@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 #define BUFFSIZE 1024
-#define MAXSIZE 70000
+#define MAXSIZE 70001
 #define CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ "
 
 
@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     char message[MAXSIZE * 2];
     int message_length;
     char header[BUFFSIZE];
-    int sent, recvd;
+    int sent, recvd, remaining;
     char recv_buffer[MAXSIZE];
     char plaintext[MAXSIZE];
     char key[MAXSIZE];
@@ -37,6 +37,7 @@ int main(int argc, char* argv[])
     FILE * key_file;
     int read_file;
     int write_chars;
+    char send_buff[1024];
 
 
     //check coomand syntax
@@ -78,7 +79,6 @@ int main(int argc, char* argv[])
     strcat(message, plaintext);
     strcat(message, key);
 
-    printf("message contains:\n%s", message);
 
     //build the header to send to the server
     message_length = strlen(message);
@@ -113,21 +113,28 @@ int main(int argc, char* argv[])
     //get ack message from server
     memset(recv_buffer, '\0', MAXSIZE);
     recv(client_socket, recv_buffer, MAXSIZE, 0);
-    char ack[] = "ok";
+    char ack[] = "enc";
     if (strcmp(recv_buffer, ack) != 0)
     {
         perror("CLIENT: No acknowledgement from server\n");
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
     memset(recv_buffer, '\0', MAXSIZE);
 
     //send the message to the server
     sent = 0;
-    int send_index = 0;
-    while(sent < message_length)
+    remaining = message_length;
+    int k;
+    while (sent < remaining)
     {
-        sent += send(client_socket, &message[send_index], 1024, 0);
-        send_index += sent;
+        k = send(client_socket, message + sent, remaining, 0);
+        if (k == -1)
+        {
+            perror("Client: there was an issue sending data to the server\n");
+            exit(EXIT_FAILURE);
+        }
+        sent += k;
+        remaining -= k;
     }
 
     if (sent < 0)
